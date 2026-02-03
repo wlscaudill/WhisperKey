@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default emoji hotkeys array -->
+    <!-- Format: trigger_word|emoji -->
+    <string-array name="default_emoji_hotkeys">
+        <item>smile|😊</item>
+        <item>laugh|😂</item>
+        <item>love|❤️</item>
+        <item>heart|❤️</item>
+        <item>thumbs up|👍</item>
+        <item>thumbs down|👎</item>
+        <item>fire|🔥</item>
+        <item>clap|👏</item>
+        <item>wave|👋</item>
+        <item>ok|👌</item>
+        <item>pray|🙏</item>
+        <item>celebrate|🎉</item>
+        <item>party|🎉</item>
+        <item>star|⭐</item>
+        <item>sun|☀️</item>
+        <item>moon|🌙</item>
+        <item>rain|🌧️</item>
+        <item>snow|❄️</item>
+        <item>coffee|☕</item>
+        <item>pizza|🍕</item>
+        <item>cake|🎂</item>
+        <item>music|🎵</item>
+        <item>phone|📱</item>
+        <item>computer|💻</item>
+        <item>check|✅</item>
+        <item>cross|❌</item>
+        <item>question|❓</item>
+        <item>exclamation|❗</item>
+        <item>thinking|🤔</item>
+        <item>sad|😢</item>
+        <item>angry|😠</item>
+        <item>surprised|😮</item>
+        <item>cool|😎</item>
+        <item>wink|😉</item>
+        <item>kiss|😘</item>
+        <item>hug|🤗</item>
+        <item>shrug|🤷</item>
+        <item>facepalm|🤦</item>
+        <item>rocket|🚀</item>
+        <item>lightning|⚡</item>
+    </string-array>
+</resources>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Info -->
+    <string name="app_name">WhisperKey</string>
+    <string name="ime_name">WhisperKey Voice Input</string>
+    <string name="subtype_en_us">English (US)</string>
+
+    <!-- Settings -->
+    <string name="settings_title">WhisperKey Settings</string>
+
+    <!-- Preference Categories -->
+    <string name="pref_category_model">Speech Recognition Model</string>
+    <string name="pref_category_audio">Audio Settings</string>
+    <string name="pref_category_emoji">Emoji Hotkeys</string>
+    <string name="pref_category_interface">Interface</string>
+    <string name="pref_category_about">About</string>
+
+    <!-- Model Preferences -->
+    <string name="pref_model_size_title">Model Size</string>
+    <string name="pref_model_size_summary">Larger models are more accurate but slower</string>
+    <string name="pref_download_model_title">Download Model</string>
+    <string name="pref_download_model_summary">Download the selected model for offline use</string>
+
+    <!-- Model Size Options -->
+    <string-array name="model_size_entries">
+        <item>Tiny (75 MB)</item>
+        <item>Base (142 MB)</item>
+        <item>Small (466 MB)</item>
+        <item>Medium (1.5 GB)</item>
+    </string-array>
+    <string-array name="model_size_values">
+        <item>tiny</item>
+        <item>base</item>
+        <item>small</item>
+        <item>medium</item>
+    </string-array>
+
+    <!-- Audio Preferences -->
+    <string name="pref_auto_silence_title">Auto-detect Silence</string>
+    <string name="pref_auto_silence_summary">Automatically stop recording when silence is detected</string>
+    <string name="pref_silence_threshold_title">Silence Threshold</string>
+
+    <!-- Emoji Preferences -->
+    <string name="pref_emoji_hotkeys_title">Emoji Hotkeys</string>
+    <string name="pref_emoji_hotkeys_summary">Enable voice-activated emoji shortcuts</string>
+    <string name="pref_manage_emoji_title">Manage Emoji Hotkeys</string>
+    <string name="pref_manage_emoji_summary">Add, edit, or remove emoji voice shortcuts</string>
+
+    <!-- Interface Preferences -->
+    <string name="pref_haptic_title">Haptic Feedback</string>
+    <string name="pref_haptic_summary">Vibrate when recording starts and stops</string>
+    <string name="pref_waveform_title">Show Waveform</string>
+    <string name="pref_waveform_summary">Display audio waveform while recording</string>
+
+    <!-- About Preferences -->
+    <string name="pref_version_title">Version</string>
+    <string name="pref_licenses_title">Open Source Licenses</string>
+    <string name="pref_licenses_summary">View third-party software licenses</string>
+
+    <!-- Voice Input UI -->
+    <string name="voice_input_hint">Tap to speak</string>
+    <string name="voice_input_listening">Listening…</string>
+    <string name="voice_input_processing">Processing…</string>
+    <string name="voice_input_error">Error occurred</string>
+
+    <!-- Permissions -->
+    <string name="permission_microphone_title">Microphone Permission Required</string>
+    <string name="permission_microphone_message">WhisperKey needs microphone access to transcribe your speech.</string>
+    <string name="permission_grant">Grant Permission</string>
+
+    <!-- Model Download -->
+    <string name="model_downloading">Downloading model…</string>
+    <string name="model_download_complete">Model downloaded successfully</string>
+    <string name="model_download_failed">Model download failed</string>
+    <string name="model_not_found">Model not found. Please download first.</string>
+
+    <!-- Emoji Picker -->
+    <string name="emoji_picker_title">Select Emoji</string>
+    <string name="emoji_hotkey_add">Add Hotkey</string>
+    <string name="emoji_hotkey_trigger">Trigger word</string>
+    <string name="emoji_hotkey_emoji">Emoji</string>
+
+    <!-- General -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+
+    <!-- Button Descriptions -->
+    <string name="mic_button_description">Tap to start voice input</string>
+    <string name="backspace_description">Delete</string>
+    <string name="settings_description">Settings</string>
+
+    <!-- Recording Mode -->
+    <string name="pref_recording_mode_title">Recording Mode</string>
+    <string name="pref_recording_mode_summary">How to activate voice recording</string>
+    <string-array name="recording_mode_entries">
+        <item>Tap to toggle</item>
+        <item>Hold to record</item>
+    </string-array>
+    <string-array name="recording_mode_values">
+        <item>tap_toggle</item>
+        <item>hold_to_record</item>
+    </string-array>
+
+    <!-- Storage Location -->
+    <string name="pref_storage_location_title">Storage Location</string>
+    <string name="pref_storage_location_summary">Where to store downloaded models</string>
+    <string-array name="storage_location_entries">
+        <item>Internal Storage</item>
+        <item>SD Card</item>
+    </string-array>
+    <string-array name="storage_location_values">
+        <item>internal</item>
+        <item>external</item>
+    </string-array>
+
+    <!-- Hold to Record Status -->
+    <string name="voice_input_hold_hint">Hold to speak</string>
+</resources>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/pref_category_model">
+
+        <ListPreference
+            android:key="model_size"
+            android:title="@string/pref_model_size_title"
+            android:summary="@string/pref_model_size_summary"
+            android:entries="@array/model_size_entries"
+            android:entryValues="@array/model_size_values"
+            android:defaultValue="base" />
+
+        <Preference
+            android:key="download_model"
+            android:title="@string/pref_download_model_title"
+            android:summary="@string/pref_download_model_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_audio">
+
+        <SwitchPreferenceCompat
+            android:key="auto_detect_silence"
+            android:title="@string/pref_auto_silence_title"
+            android:summary="@string/pref_auto_silence_summary"
+            android:defaultValue="true" />
+
+        <SeekBarPreference
+            android:key="silence_threshold"
+            android:title="@string/pref_silence_threshold_title"
+            android:defaultValue="30"
+            android:max="100"
+            app:min="10"
+            app:showSeekBarValue="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_emoji">
+
+        <SwitchPreferenceCompat
+            android:key="emoji_hotkeys_enabled"
+            android:title="@string/pref_emoji_hotkeys_title"
+            android:summary="@string/pref_emoji_hotkeys_summary"
+            android:defaultValue="true" />
+
+        <Preference
+            android:key="manage_emoji_hotkeys"
+            android:title="@string/pref_manage_emoji_title"
+            android:summary="@string/pref_manage_emoji_summary"
+            android:dependency="emoji_hotkeys_enabled" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_interface">
+
+        <SwitchPreferenceCompat
+            android:key="haptic_feedback"
+            android:title="@string/pref_haptic_title"
+            android:summary="@string/pref_haptic_summary"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="show_waveform"
+            android:title="@string/pref_waveform_title"
+            android:summary="@string/pref_waveform_summary"
+            android:defaultValue="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_about">
+
+        <Preference
+            android:key="app_version"
+            android:title="@string/pref_version_title"
+            android:selectable="false" />
+
+        <Preference
+            android:key="open_source_licenses"
+            android:title="@string/pref_licenses_title"
+            android:summary="@string/pref_licenses_summary" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
