@@ -73,6 +73,9 @@ dependencies {
     // AndroidX Preferences
     implementation("androidx.preference:preference-ktx:1.2.1")
 
+    // DocumentFile for folder access
+    implementation("androidx.documentfile:documentfile:1.0.1")
+
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

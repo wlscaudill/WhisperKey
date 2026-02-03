@@ -23,16 +23,14 @@
 
     <!-- Model Size Options -->
     <string-array name="model_size_entries">
-        <item>Tiny (75 MB)</item>
-        <item>Base (142 MB)</item>
-        <item>Small (466 MB)</item>
-        <item>Medium (1.5 GB)</item>
+        <item>Tiny (75 MB) - Fastest</item>
+        <item>Base (142 MB) - Recommended</item>
+        <item>Small (466 MB) - Best Quality</item>
     </string-array>
     <string-array name="model_size_values">
         <item>tiny</item>
         <item>base</item>
         <item>small</item>
-        <item>medium</item>
     </string-array>
 
     <!-- Audio Preferences -->
@@ -106,15 +104,32 @@
     <!-- Storage Location -->
     <string name="pref_storage_location_title">Storage Location</string>
     <string name="pref_storage_location_summary">Where to store downloaded models</string>
-    <string-array name="storage_location_entries">
-        <item>Internal Storage</item>
-        <item>SD Card</item>
-    </string-array>
-    <string-array name="storage_location_values">
-        <item>internal</item>
-        <item>external</item>
-    </string-array>
+    <string name="select_folder_title">Select Storage Folder</string>
+    <string name="folder_not_writable">Cannot write to selected folder</string>
+    <string name="folder_selected">Storage location set</string>
 
     <!-- Hold to Record Status -->
     <string name="voice_input_hold_hint">Hold to speak</string>
+
+    <!-- Delete Model -->
+    <string name="pref_delete_model_title">Delete Model</string>
+    <string name="pref_delete_model_summary">Remove downloaded model to free up storage</string>
+    <string name="model_deleted">Model deleted successfully</string>
+    <string name="model_not_downloaded">No model downloaded</string>
+    <string name="confirm_delete_model">Are you sure you want to delete the downloaded model?</string>
+
+    <!-- Debug Category -->
+    <string name="pref_category_debug">Debug</string>
+    <string name="pref_show_logs_title">Show Logs</string>
+    <string name="pref_show_logs_summary">View application debug logs</string>
+    <string name="pref_clear_logs_title">Clear Logs</string>
+    <string name="pref_clear_logs_summary">Delete all stored log entries</string>
+    <string name="pref_model_info_title">Model Info</string>
+    <string name="pref_model_info_summary">View current model status and paths</string>
+    <string name="logs_cleared">Logs cleared</string>
+    <string name="no_logs">No logs available</string>
+    <string name="logs_title">Debug Logs</string>
+    <string name="model_info_title">Model Information</string>
+    <string name="copy_to_clipboard">Copy</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
 </resources>

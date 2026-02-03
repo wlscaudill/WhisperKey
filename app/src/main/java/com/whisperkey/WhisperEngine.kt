@@ -1,6 +1,7 @@
 package com.whisperkey
 
 import android.content.Context
+import com.whisperkey.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,11 +17,17 @@ import java.io.File
 class WhisperEngine(private val context: Context) {
 
     companion object {
+        private const val TAG = "WhisperEngine"
         private const val SAMPLE_RATE = 16000
         private val NUM_THREADS = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
 
         init {
-            System.loadLibrary("whisper")
+            try {
+                System.loadLibrary("whisper")
+                Logger.i(TAG, "Native library 'whisper' loaded successfully")
+            } catch (e: UnsatisfiedLinkError) {
+                Logger.e(TAG, "Failed to load native library: ${e.message}", e)
+            }
         }
     }
 
@@ -34,17 +41,31 @@ class WhisperEngine(private val context: Context) {
      * @return true if initialization was successful
      */
     fun initialize(modelPath: String): Boolean {
+        Logger.i(TAG, "Initializing with model: $modelPath")
+
         if (isInitialized) {
+            Logger.d(TAG, "Already initialized, releasing first")
             release()
         }
 
         val modelFile = File(modelPath)
         if (!modelFile.exists()) {
+            Logger.e(TAG, "Model file does not exist: $modelPath")
             return false
         }
 
-        contextHandle = nativeInit(modelPath)
-        isInitialized = contextHandle != 0L
+        Logger.d(TAG, "Model file size: ${modelFile.length()} bytes")
+        Logger.d(TAG, "Using $NUM_THREADS threads")
+
+        try {
+            contextHandle = nativeInit(modelPath)
+            isInitialized = contextHandle != 0L
+            Logger.i(TAG, "Initialization ${if (isInitialized) "successful" else "failed"}, handle: $contextHandle")
+        } catch (e: Exception) {
+            Logger.e(TAG, "Exception during initialization: ${e.message}", e)
+            isInitialized = false
+        }
+
         return isInitialized
     }
 
@@ -75,9 +96,22 @@ class WhisperEngine(private val context: Context) {
 
     private fun transcribeInternal(audioData: FloatArray): String {
         if (!isInitialized) {
+            Logger.w(TAG, "Cannot transcribe: engine not initialized")
             return ""
         }
-        return nativeTranscribe(contextHandle, audioData, NUM_THREADS)
+
+        Logger.d(TAG, "Transcribing ${audioData.size} samples (${audioData.size / SAMPLE_RATE.toFloat()}s)")
+        val startTime = System.currentTimeMillis()
+
+        try {
+            val result = nativeTranscribe(contextHandle, audioData, NUM_THREADS)
+            val elapsed = System.currentTimeMillis() - startTime
+            Logger.i(TAG, "Transcription completed in ${elapsed}ms: \"${result.take(100)}${if (result.length > 100) "..." else ""}\"")
+            return result
+        } catch (e: Exception) {
+            Logger.e(TAG, "Transcription error: ${e.message}", e)
+            return ""
+        }
     }
 
     /**

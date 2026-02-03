@@ -1,8 +1,10 @@
 package com.whisperkey
 
 import android.content.Context
-import android.os.Environment
+import androidx.documentfile.provider.DocumentFile
 import androidx.preference.PreferenceManager
+import com.whisperkey.util.Logger
+import com.whisperkey.util.StorageHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,23 +16,22 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
  * Manages Whisper model downloads and storage.
- * Supports both internal storage and SD card.
+ * Supports internal app storage and custom folder (including SD card via SAF).
  * Uses English-only models for better performance.
  */
 class ModelManager(private val context: Context) {
 
     companion object {
+        private const val TAG = "ModelManager"
         private const val BASE_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
-        private const val MODELS_DIR = "models"
-        private const val PREF_STORAGE_LOCATION = "storage_location"
+        private const val MODELS_SUBDIR = "whisper_models"
+        private const val PREF_CUSTOM_STORAGE_URI = "custom_storage_uri"
 
         // English-only models for better performance
-        // SHA256 hashes from: https://huggingface.co/ggerganov/whisper.cpp
         val MODELS = mapOf(
             "tiny" to ModelInfo(
                 fileName = "ggml-tiny.en.bin",
@@ -60,11 +61,6 @@ class ModelManager(private val context: Context) {
         val sha256: String
     )
 
-    enum class StorageLocation {
-        INTERNAL,
-        EXTERNAL
-    }
-
     sealed class DownloadState {
         object Idle : DownloadState()
         data class Downloading(val progress: Float, val bytesDownloaded: Long, val totalBytes: Long) : DownloadState()
@@ -87,102 +83,158 @@ class ModelManager(private val context: Context) {
     @Volatile
     private var isCancelled = false
 
+    // ==================== Storage Location Methods ====================
+
     /**
-     * Gets the current storage location preference.
+     * Check if a custom storage location is set.
      */
-    fun getStorageLocation(): StorageLocation {
-        val pref = prefs.getString(PREF_STORAGE_LOCATION, "internal")
-        return if (pref == "external" && isExternalStorageAvailable()) {
-            StorageLocation.EXTERNAL
+    fun hasCustomStorage(): Boolean {
+        return getCustomStorageUri() != null
+    }
+
+    /**
+     * Get the custom storage URI if set.
+     */
+    fun getCustomStorageUri(): String? {
+        return prefs.getString(PREF_CUSTOM_STORAGE_URI, null)
+    }
+
+    /**
+     * Set a custom storage location from a SAF tree URI.
+     */
+    fun setCustomStorageUri(uri: String?) {
+        Logger.i(TAG, "Setting custom storage URI: $uri")
+        if (uri != null) {
+            prefs.edit().putString(PREF_CUSTOM_STORAGE_URI, uri).apply()
         } else {
-            StorageLocation.INTERNAL
+            prefs.edit().remove(PREF_CUSTOM_STORAGE_URI).apply()
         }
     }
 
     /**
-     * Sets the storage location preference.
+     * Get a human-readable name for the current storage location.
      */
-    fun setStorageLocation(location: StorageLocation) {
-        val value = if (location == StorageLocation.EXTERNAL) "external" else "internal"
-        prefs.edit().putString(PREF_STORAGE_LOCATION, value).apply()
-    }
-
-    /**
-     * Checks if external storage (SD card) is available.
-     */
-    fun isExternalStorageAvailable(): Boolean {
-        val state = Environment.getExternalStorageState()
-        if (state != Environment.MEDIA_MOUNTED) return false
-
-        val externalDir = context.getExternalFilesDir(null)
-        return externalDir != null && (externalDir.exists() || externalDir.mkdirs())
-    }
-
-    /**
-     * Gets available space in bytes for the specified storage location.
-     */
-    fun getAvailableSpace(location: StorageLocation): Long {
-        val dir = getModelsDirectory(location)
-        return dir.freeSpace
-    }
-
-    /**
-     * Gets the models directory for the specified storage location.
-     */
-    fun getModelsDirectory(location: StorageLocation = getStorageLocation()): File {
-        val baseDir = when (location) {
-            StorageLocation.INTERNAL -> context.filesDir
-            StorageLocation.EXTERNAL -> context.getExternalFilesDir(null) ?: context.filesDir
-        }
-        return File(baseDir, MODELS_DIR).apply {
-            if (!exists()) mkdirs()
+    fun getStorageDisplayName(): String {
+        val customUri = getCustomStorageUri()
+        return if (customUri != null) {
+            StorageHelper.getStorageDisplayName(context, customUri)
+        } else {
+            "Internal App Storage"
         }
     }
 
     /**
-     * Gets the path for a specific model.
+     * Get the internal app storage directory for models.
      */
-    fun getModelPath(modelSize: String, location: StorageLocation = getStorageLocation()): String {
-        val modelInfo = MODELS[modelSize] ?: MODELS["base"]!!
-        return File(getModelsDirectory(location), modelInfo.fileName).absolutePath
+    fun getInternalModelsDirectory(): File {
+        val dir = File(context.filesDir, MODELS_SUBDIR)
+        if (!dir.exists()) {
+            val created = dir.mkdirs()
+            Logger.d(TAG, "Created internal models directory: $created - ${dir.absolutePath}")
+        }
+        return dir
     }
 
     /**
-     * Checks if a model is downloaded in any location.
+     * Get available space for the current storage location.
+     */
+    fun getAvailableSpace(): Long {
+        val customUri = getCustomStorageUri()
+        return if (customUri != null) {
+            val path = StorageHelper.getFilePathFromUri(context, customUri)
+            if (path != null) {
+                File(path).freeSpace
+            } else {
+                0L
+            }
+        } else {
+            getInternalModelsDirectory().freeSpace
+        }
+    }
+
+    // ==================== Model Management Methods ====================
+
+    /**
+     * Check if a model is downloaded (checks both internal and custom storage).
      */
     fun isModelDownloaded(modelSize: String): Boolean {
-        return findModelLocation(modelSize) != null
+        return getDownloadedModelPath(modelSize) != null
     }
 
     /**
-     * Finds which storage location contains the model, or null if not downloaded.
+     * Get the path to a downloaded model, checking all storage locations.
+     * Returns null if model is not found.
      */
-    fun findModelLocation(modelSize: String): StorageLocation? {
-        val modelInfo = MODELS[modelSize] ?: return null
-
-        // Check internal first
-        val internalPath = File(getModelsDirectory(StorageLocation.INTERNAL), modelInfo.fileName)
-        if (internalPath.exists() && internalPath.length() > 0) {
-            return StorageLocation.INTERNAL
+    fun getDownloadedModelPath(modelSize: String): String? {
+        val modelInfo = MODELS[modelSize]
+        if (modelInfo == null) {
+            Logger.e(TAG, "Unknown model size: $modelSize")
+            return null
         }
 
-        // Check external
-        if (isExternalStorageAvailable()) {
-            val externalPath = File(getModelsDirectory(StorageLocation.EXTERNAL), modelInfo.fileName)
-            if (externalPath.exists() && externalPath.length() > 0) {
-                return StorageLocation.EXTERNAL
+        Logger.d(TAG, "Looking for model: ${modelInfo.fileName}")
+
+        // Check internal storage first
+        val internalPath = File(getInternalModelsDirectory(), modelInfo.fileName)
+        Logger.d(TAG, "Checking internal: ${internalPath.absolutePath}")
+        Logger.d(TAG, "  exists: ${internalPath.exists()}, size: ${if (internalPath.exists()) internalPath.length() else 0}")
+
+        if (internalPath.exists() && internalPath.length() > 0) {
+            Logger.i(TAG, "Found model in internal storage: ${internalPath.absolutePath}")
+            return internalPath.absolutePath
+        }
+
+        // Check custom storage
+        val customUri = getCustomStorageUri()
+        if (customUri != null) {
+            // First try to get the file path directly
+            val customBasePath = StorageHelper.getFilePathFromUri(context, customUri)
+            if (customBasePath != null) {
+                val customPath = File(customBasePath, modelInfo.fileName)
+                Logger.d(TAG, "Checking custom path: ${customPath.absolutePath}")
+                Logger.d(TAG, "  exists: ${customPath.exists()}, size: ${if (customPath.exists()) customPath.length() else 0}")
+
+                if (customPath.exists() && customPath.length() > 0) {
+                    Logger.i(TAG, "Found model in custom storage: ${customPath.absolutePath}")
+                    return customPath.absolutePath
+                }
+            }
+
+            // Also check using DocumentFile (for SAF access)
+            val docFile = StorageHelper.findFileInStorage(context, customUri, modelInfo.fileName)
+            if (docFile != null && docFile.length() > 0) {
+                // Try to get the actual file path
+                val docPath = StorageHelper.getFilePathFromUri(context, customUri)
+                if (docPath != null) {
+                    val fullPath = "$docPath/${modelInfo.fileName}"
+                    Logger.i(TAG, "Found model via DocumentFile: $fullPath")
+                    return fullPath
+                }
             }
         }
 
+        Logger.w(TAG, "Model not found: $modelSize")
         return null
     }
 
     /**
-     * Gets the actual path to a downloaded model (checking both locations).
+     * Get the target path for downloading a model.
      */
-    fun getDownloadedModelPath(modelSize: String): String? {
-        val location = findModelLocation(modelSize) ?: return null
-        return getModelPath(modelSize, location)
+    fun getModelDownloadPath(modelSize: String): String? {
+        val modelInfo = MODELS[modelSize] ?: return null
+
+        val customUri = getCustomStorageUri()
+        return if (customUri != null) {
+            val basePath = StorageHelper.getFilePathFromUri(context, customUri)
+            if (basePath != null) {
+                File(basePath, modelInfo.fileName).absolutePath
+            } else {
+                Logger.e(TAG, "Cannot convert custom URI to path")
+                null
+            }
+        } else {
+            File(getInternalModelsDirectory(), modelInfo.fileName).absolutePath
+        }
     }
 
     /**
@@ -191,7 +243,16 @@ class ModelManager(private val context: Context) {
     fun downloadModel(modelSize: String, onComplete: ((Boolean) -> Unit)? = null) {
         val modelInfo = MODELS[modelSize]
         if (modelInfo == null) {
+            Logger.e(TAG, "Unknown model size: $modelSize")
             _downloadState.value = DownloadState.Error("Unknown model size: $modelSize")
+            onComplete?.invoke(false)
+            return
+        }
+
+        val outputPath = getModelDownloadPath(modelSize)
+        if (outputPath == null) {
+            Logger.e(TAG, "Cannot determine download path")
+            _downloadState.value = DownloadState.Error("Cannot determine download path")
             onComplete?.invoke(false)
             return
         }
@@ -200,18 +261,37 @@ class ModelManager(private val context: Context) {
 
         scope.launch {
             try {
+                Logger.i(TAG, "=== Starting Download ===")
+                Logger.i(TAG, "Model: $modelSize (${modelInfo.fileName})")
+                Logger.i(TAG, "Expected size: ${formatBytes(modelInfo.sizeBytes)}")
+                Logger.i(TAG, "Output path: $outputPath")
+
                 _downloadState.value = DownloadState.Downloading(0f, 0, modelInfo.sizeBytes)
 
                 val url = "$BASE_URL/${modelInfo.fileName}"
-                val outputFile = File(getModelsDirectory(), modelInfo.fileName)
+                val outputFile = File(outputPath)
 
-                // Download file
-                val downloadSuccess = downloadFile(url, outputFile, modelInfo.sizeBytes)
+                // Ensure parent directory exists
+                outputFile.parentFile?.let { parent ->
+                    if (!parent.exists()) {
+                        val created = parent.mkdirs()
+                        Logger.d(TAG, "Created parent directory: $created - ${parent.absolutePath}")
+                    }
+                }
 
-                if (!downloadSuccess) {
+                Logger.i(TAG, "Download URL: $url")
+                Logger.i(TAG, "Parent exists: ${outputFile.parentFile?.exists()}")
+                Logger.i(TAG, "Parent writable: ${outputFile.parentFile?.canWrite()}")
+
+                // Download file - returns content length on success
+                val expectedSize = downloadFile(url, outputFile, modelInfo.sizeBytes)
+
+                if (expectedSize == null) {
                     if (isCancelled) {
+                        Logger.w(TAG, "Download cancelled by user")
                         _downloadState.value = DownloadState.Error("Download cancelled")
                     } else {
+                        Logger.e(TAG, "Download failed")
                         _downloadState.value = DownloadState.Error("Download failed")
                     }
                     outputFile.delete()
@@ -221,11 +301,16 @@ class ModelManager(private val context: Context) {
                     return@launch
                 }
 
-                // Verify file size
+                // Verify file size against server's content-length
+                Logger.i(TAG, "Download complete, verifying...")
                 _downloadState.value = DownloadState.Verifying
-                if (outputFile.length() != modelInfo.sizeBytes) {
+                val actualSize = outputFile.length()
+                Logger.i(TAG, "Expected (from server): $expectedSize, Actual: $actualSize")
+
+                if (actualSize != expectedSize) {
+                    Logger.e(TAG, "File size mismatch!")
                     _downloadState.value = DownloadState.Error(
-                        "File size mismatch. Expected ${modelInfo.sizeBytes}, got ${outputFile.length()}"
+                        "File size mismatch. Expected $expectedSize, got $actualSize"
                     )
                     outputFile.delete()
                     withContext(Dispatchers.Main) {
@@ -234,12 +319,15 @@ class ModelManager(private val context: Context) {
                     return@launch
                 }
 
+                Logger.i(TAG, "=== Download Complete ===")
+                Logger.i(TAG, "Model saved to: ${outputFile.absolutePath}")
                 _downloadState.value = DownloadState.Completed(outputFile.absolutePath)
                 withContext(Dispatchers.Main) {
                     onComplete?.invoke(true)
                 }
 
             } catch (e: Exception) {
+                Logger.e(TAG, "Download error: ${e.message}", e)
                 _downloadState.value = DownloadState.Error(e.message ?: "Unknown error")
                 withContext(Dispatchers.Main) {
                     onComplete?.invoke(false)
@@ -255,23 +343,38 @@ class ModelManager(private val context: Context) {
         isCancelled = true
     }
 
-    private suspend fun downloadFile(url: String, outputFile: File, expectedSize: Long): Boolean {
+    /**
+     * Downloads a file and returns the content length on success, or null on failure.
+     */
+    private suspend fun downloadFile(url: String, outputFile: File, expectedSize: Long): Long? {
         return withContext(Dispatchers.IO) {
             try {
+                Logger.d(TAG, "Creating HTTP request...")
                 val request = Request.Builder()
                     .url(url)
                     .build()
 
                 httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@withContext false
+                    Logger.d(TAG, "Response code: ${response.code}")
+                    if (!response.isSuccessful) {
+                        Logger.e(TAG, "HTTP request failed: ${response.code}")
+                        return@withContext null
+                    }
 
-                    val body = response.body ?: return@withContext false
+                    val body = response.body
+                    if (body == null) {
+                        Logger.e(TAG, "Response body is null")
+                        return@withContext null
+                    }
+
                     val contentLength = body.contentLength().takeIf { it > 0 } ?: expectedSize
+                    Logger.d(TAG, "Content-Length: $contentLength")
 
                     FileOutputStream(outputFile).use { output ->
                         val buffer = ByteArray(8192)
                         var bytesRead = 0
                         var totalBytesRead = 0L
+                        var lastLogTime = System.currentTimeMillis()
 
                         body.byteStream().use { input ->
                             while (!isCancelled && input.read(buffer).also { bytesRead = it } != -1) {
@@ -284,38 +387,51 @@ class ModelManager(private val context: Context) {
                                     totalBytesRead,
                                     contentLength
                                 )
+
+                                // Log progress every 5 seconds
+                                val now = System.currentTimeMillis()
+                                if (now - lastLogTime > 5000) {
+                                    Logger.d(TAG, "Progress: ${(progress * 100).toInt()}% (${formatBytes(totalBytesRead)})")
+                                    lastLogTime = now
+                                }
                             }
                         }
                     }
 
-                    !isCancelled
+                    if (isCancelled) null else contentLength
                 }
             } catch (e: Exception) {
+                Logger.e(TAG, "Download exception: ${e.message}", e)
                 outputFile.delete()
-                false
+                null
             }
         }
     }
 
     /**
-     * Deletes a downloaded model from all locations.
+     * Deletes a downloaded model from all storage locations.
      */
     fun deleteModel(modelSize: String): Boolean {
         val modelInfo = MODELS[modelSize] ?: return false
-
         var deleted = false
 
-        // Delete from internal
-        val internalFile = File(getModelsDirectory(StorageLocation.INTERNAL), modelInfo.fileName)
+        // Delete from internal storage
+        val internalFile = File(getInternalModelsDirectory(), modelInfo.fileName)
         if (internalFile.exists()) {
+            Logger.d(TAG, "Deleting from internal: ${internalFile.absolutePath}")
             deleted = internalFile.delete() || deleted
         }
 
-        // Delete from external
-        if (isExternalStorageAvailable()) {
-            val externalFile = File(getModelsDirectory(StorageLocation.EXTERNAL), modelInfo.fileName)
-            if (externalFile.exists()) {
-                deleted = externalFile.delete() || deleted
+        // Delete from custom storage
+        val customUri = getCustomStorageUri()
+        if (customUri != null) {
+            val customPath = StorageHelper.getFilePathFromUri(context, customUri)
+            if (customPath != null) {
+                val customFile = File(customPath, modelInfo.fileName)
+                if (customFile.exists()) {
+                    Logger.d(TAG, "Deleting from custom: ${customFile.absolutePath}")
+                    deleted = customFile.delete() || deleted
+                }
             }
         }
 
@@ -327,14 +443,6 @@ class ModelManager(private val context: Context) {
      */
     fun getDownloadedModels(): List<String> {
         return MODELS.keys.filter { isModelDownloaded(it) }
-    }
-
-    /**
-     * Gets the size of a downloaded model in bytes.
-     */
-    fun getModelSize(modelSize: String): Long {
-        val path = getDownloadedModelPath(modelSize) ?: return 0
-        return File(path).length()
     }
 
     /**

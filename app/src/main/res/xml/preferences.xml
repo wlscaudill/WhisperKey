@@ -13,9 +13,19 @@
             android:defaultValue="base" />
 
         <Preference
+            android:key="storage_location"
+            android:title="@string/pref_storage_location_title"
+            android:summary="@string/pref_storage_location_summary" />
+
+        <Preference
             android:key="download_model"
             android:title="@string/pref_download_model_title"
             android:summary="@string/pref_download_model_summary" />
+
+        <Preference
+            android:key="delete_model"
+            android:title="@string/pref_delete_model_title"
+            android:summary="@string/pref_delete_model_summary" />
 
     </PreferenceCategory>
 
@@ -55,6 +65,14 @@
 
     <PreferenceCategory android:title="@string/pref_category_interface">
 
+        <ListPreference
+            android:key="recording_mode"
+            android:title="@string/pref_recording_mode_title"
+            android:summary="@string/pref_recording_mode_summary"
+            android:entries="@array/recording_mode_entries"
+            android:entryValues="@array/recording_mode_values"
+            android:defaultValue="tap_toggle" />
+
         <SwitchPreferenceCompat
             android:key="haptic_feedback"
             android:title="@string/pref_haptic_title"
@@ -80,6 +98,25 @@
             android:key="open_source_licenses"
             android:title="@string/pref_licenses_title"
             android:summary="@string/pref_licenses_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_category_debug">
+
+        <Preference
+            android:key="show_logs"
+            android:title="@string/pref_show_logs_title"
+            android:summary="@string/pref_show_logs_summary" />
+
+        <Preference
+            android:key="clear_logs"
+            android:title="@string/pref_clear_logs_title"
+            android:summary="@string/pref_clear_logs_summary" />
+
+        <Preference
+            android:key="model_info"
+            android:title="@string/pref_model_info_title"
+            android:summary="@string/pref_model_info_summary" />
 
     </PreferenceCategory>
 
