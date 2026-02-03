@@ -77,7 +77,7 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
 
     LOGI("Transcribing %d samples with %d threads", audio_data_length, num_threads);
 
-    // Set up transcription parameters
+    // Set up transcription parameters - optimized for speed
     struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.print_realtime = false;
     params.print_progress = false;
@@ -88,7 +88,7 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
     params.n_threads = num_threads;
     params.offset_ms = 0;
     params.no_context = true;
-    params.single_segment = false;
+    params.single_segment = true;      // Faster for short audio (keyboard input)
     params.suppress_blank = true;
     params.suppress_nst = true;
 

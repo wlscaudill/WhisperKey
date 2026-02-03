@@ -116,14 +116,18 @@ elseif(${ANDROID_ABI} STREQUAL "armeabi-v7a")
     target_compile_options(whisper PRIVATE -mfpu=neon-vfpv4 -mfloat-abi=softfp)
 endif()
 
-# Release build optimizations
+# Optimizations for all builds (whisper.cpp is too slow without optimization)
+target_compile_options(whisper PRIVATE
+    -O3
+    -ffunction-sections
+    -fdata-sections
+)
+
+# Additional release-only optimizations
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(whisper PRIVATE
-        -O3
         -fvisibility=hidden
         -fvisibility-inlines-hidden
-        -ffunction-sections
-        -fdata-sections
     )
     target_link_options(whisper PRIVATE
         -Wl,--gc-sections
