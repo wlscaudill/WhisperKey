@@ -270,7 +270,7 @@ class ModelManager(private val context: Context) {
 
                     FileOutputStream(outputFile).use { output ->
                         val buffer = ByteArray(8192)
-                        var bytesRead: Int
+                        var bytesRead = 0
                         var totalBytesRead = 0L
 
                         body.byteStream().use { input ->

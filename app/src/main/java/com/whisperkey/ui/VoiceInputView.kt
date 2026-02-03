@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import com.whisperkey.R
 
@@ -27,40 +28,135 @@ class VoiceInputView @JvmOverloads constructor(
         fun onRecordingStopped()
     }
 
+    interface OnActionListener {
+        fun onBackspaceClick()
+        fun onSettingsClick()
+        fun onEmojiClick(emoji: String)
+    }
+
     private var recordingListener: OnRecordingListener? = null
+    private var actionListener: OnActionListener? = null
     private var isRecording = false
     private var isProcessing = false
+    private var holdToRecord = false // false = tap to toggle, true = hold to record
 
-    private val recordButton: ImageButton
+    private val micButton: ImageButton
     private val statusText: TextView
+    private val waveformContainer: FrameLayout
+    private val backspaceButton: ImageButton
+    private val settingsButton: ImageButton
+    private val emojiContainer: LinearLayout
+
     private val waveformView: WaveformView
 
     init {
         LayoutInflater.from(context).inflate(R.layout.voice_input_view, this, true)
 
-        recordButton = findViewById(R.id.record_button)
+        micButton = findViewById(R.id.mic_button)
         statusText = findViewById(R.id.status_text)
-        waveformView = findViewById(R.id.waveform_view)
+        waveformContainer = findViewById(R.id.waveform_container)
+        backspaceButton = findViewById(R.id.backspace_button)
+        settingsButton = findViewById(R.id.settings_button)
+        emojiContainer = findViewById(R.id.emoji_hotkeys_container)
 
-        setupRecordButton()
+        // Create and add waveform view programmatically
+        waveformView = WaveformView(context)
+        waveformContainer.removeAllViews()
+        waveformContainer.addView(waveformView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+        setupButtons()
+        setupEmojiButtons()
     }
 
-    private fun setupRecordButton() {
-        recordButton.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (!isProcessing) {
+    private fun setupButtons() {
+        // Mic button - supports both tap-to-toggle and hold-to-record modes
+        micButton.setOnTouchListener { _, event ->
+            if (isProcessing) return@setOnTouchListener false
+
+            if (holdToRecord) {
+                // Hold to record mode
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
                         startRecording()
+                        true
                     }
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (isRecording) {
-                        stopRecording()
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        if (isRecording) {
+                            stopRecording()
+                        }
+                        true
                     }
-                    true
+                    else -> false
                 }
-                else -> false
+            } else {
+                // Tap to toggle mode
+                when (event.action) {
+                    MotionEvent.ACTION_UP -> {
+                        if (isRecording) {
+                            stopRecording()
+                        } else {
+                            startRecording()
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }
+
+        backspaceButton.setOnClickListener {
+            actionListener?.onBackspaceClick()
+        }
+
+        settingsButton.setOnClickListener {
+            actionListener?.onSettingsClick()
+        }
+    }
+
+    private fun setupEmojiButtons() {
+        // Set up click listeners for emoji buttons
+        val emojiIds = listOf(
+            R.id.emoji_1, R.id.emoji_2, R.id.emoji_3, R.id.emoji_4, R.id.emoji_5,
+            R.id.emoji_6, R.id.emoji_7, R.id.emoji_8, R.id.emoji_9, R.id.emoji_10
+        )
+
+        for (id in emojiIds) {
+            findViewById<View>(id)?.setOnClickListener { view ->
+                if (view is android.widget.Button) {
+                    actionListener?.onEmojiClick(view.text.toString())
+                }
+            }
+        }
+    }
+
+    /**
+     * Updates the emoji at the given slot (1-10).
+     */
+    fun setEmoji(slot: Int, emoji: String) {
+        val emojiIds = listOf(
+            R.id.emoji_1, R.id.emoji_2, R.id.emoji_3, R.id.emoji_4, R.id.emoji_5,
+            R.id.emoji_6, R.id.emoji_7, R.id.emoji_8, R.id.emoji_9, R.id.emoji_10
+        )
+        if (slot in 1..10) {
+            findViewById<android.widget.Button>(emojiIds[slot - 1])?.text = emoji
+        }
+    }
+
+    /**
+     * Sets the recording mode.
+     * @param holdToRecord true for hold-to-record, false for tap-to-toggle
+     */
+    fun setRecordingMode(holdToRecord: Boolean) {
+        this.holdToRecord = holdToRecord
+        updateStatusText()
+    }
+
+    private fun updateStatusText() {
+        if (!isRecording && !isProcessing) {
+            statusText.text = if (holdToRecord) {
+                context.getString(R.string.voice_input_hold_hint)
+            } else {
+                context.getString(R.string.voice_input_hint)
             }
         }
     }
@@ -73,10 +169,17 @@ class VoiceInputView @JvmOverloads constructor(
     }
 
     /**
-     * Updates the waveform visualization with new audio data.
+     * Sets the action listener for backspace, settings, and emoji clicks.
      */
-    fun updateWaveform(audioData: FloatArray) {
-        waveformView.updateWaveform(audioData)
+    fun setOnActionListener(listener: OnActionListener) {
+        actionListener = listener
+    }
+
+    /**
+     * Updates the waveform visualization with new amplitude.
+     */
+    fun updateWaveform(amplitude: Float) {
+        waveformView.addAmplitude(amplitude)
     }
 
     /**
@@ -86,8 +189,9 @@ class VoiceInputView @JvmOverloads constructor(
         isProcessing = true
         isRecording = false
         statusText.text = context.getString(R.string.voice_input_processing)
-        waveformView.visibility = View.GONE
-        recordButton.isEnabled = false
+        waveformContainer.visibility = View.INVISIBLE
+        micButton.isEnabled = false
+        micButton.isActivated = false
     }
 
     /**
@@ -97,8 +201,21 @@ class VoiceInputView @JvmOverloads constructor(
         isProcessing = false
         isRecording = false
         statusText.text = message ?: context.getString(R.string.voice_input_error)
-        waveformView.visibility = View.GONE
-        recordButton.isEnabled = true
+        waveformContainer.visibility = View.INVISIBLE
+        micButton.isEnabled = true
+        micButton.isActivated = false
+    }
+
+    /**
+     * Shows the "no model" state.
+     */
+    fun showNoModel() {
+        isProcessing = false
+        isRecording = false
+        statusText.text = context.getString(R.string.model_not_found)
+        waveformContainer.visibility = View.INVISIBLE
+        micButton.isEnabled = false
+        micButton.isActivated = false
     }
 
     /**
@@ -107,22 +224,25 @@ class VoiceInputView @JvmOverloads constructor(
     fun reset() {
         isRecording = false
         isProcessing = false
-        statusText.text = context.getString(R.string.voice_input_hint)
-        waveformView.visibility = View.GONE
+        updateStatusText()
+        waveformContainer.visibility = View.INVISIBLE
         waveformView.clear()
-        recordButton.isEnabled = true
+        micButton.isEnabled = true
+        micButton.isActivated = false
     }
 
     private fun startRecording() {
         isRecording = true
+        micButton.isActivated = true
         statusText.text = context.getString(R.string.voice_input_listening)
-        waveformView.visibility = View.VISIBLE
+        waveformContainer.visibility = View.VISIBLE
         waveformView.clear()
         recordingListener?.onRecordingStarted()
     }
 
     private fun stopRecording() {
         isRecording = false
+        micButton.isActivated = false
         recordingListener?.onRecordingStopped()
     }
 
@@ -137,44 +257,47 @@ class VoiceInputView @JvmOverloads constructor(
 
         private val paint = Paint().apply {
             color = context.getColor(R.color.waveform_color)
-            strokeWidth = 4f
-            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            style = Paint.Style.FILL
             isAntiAlias = true
         }
 
-        private var waveformData: FloatArray = FloatArray(0)
-        private val maxSamples = 100
+        private val amplitudes = mutableListOf<Float>()
+        private val maxBars = 50
 
-        fun updateWaveform(data: FloatArray) {
-            // Downsample to maxSamples points
-            val step = maxOf(1, data.size / maxSamples)
-            waveformData = FloatArray(minOf(maxSamples, data.size)) { i ->
-                data[minOf(i * step, data.size - 1)]
+        fun addAmplitude(amplitude: Float) {
+            amplitudes.add(amplitude.coerceIn(0f, 1f))
+            if (amplitudes.size > maxBars) {
+                amplitudes.removeAt(0)
             }
             invalidate()
         }
 
         fun clear() {
-            waveformData = FloatArray(0)
+            amplitudes.clear()
             invalidate()
         }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
 
-            if (waveformData.isEmpty()) return
+            if (amplitudes.isEmpty()) return
 
+            val barWidth = width.toFloat() / maxBars
             val centerY = height / 2f
-            val maxAmplitude = height / 2f * 0.8f
-            val stepX = width.toFloat() / waveformData.size
+            val maxAmplitude = height / 2f * 0.9f
 
-            for (i in 0 until waveformData.size - 1) {
-                val x1 = i * stepX
-                val y1 = centerY + waveformData[i] * maxAmplitude
-                val x2 = (i + 1) * stepX
-                val y2 = centerY + waveformData[i + 1] * maxAmplitude
+            for ((index, amplitude) in amplitudes.withIndex()) {
+                val barHeight = amplitude * maxAmplitude
+                val x = index * barWidth + barWidth / 2
 
-                canvas.drawLine(x1, y1, x2, y2, paint)
+                canvas.drawRect(
+                    x - barWidth / 4,
+                    centerY - barHeight,
+                    x + barWidth / 4,
+                    centerY + barHeight,
+                    paint
+                )
             }
         }
     }

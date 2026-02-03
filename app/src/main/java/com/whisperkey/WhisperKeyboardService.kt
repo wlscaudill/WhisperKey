@@ -56,8 +56,27 @@ class WhisperKeyboardService : InputMethodService() {
 
     private fun startRecording() {
         audioRecorder?.start { audioData ->
-            voiceInputView?.updateWaveform(audioData)
+            // Calculate RMS amplitude from the audio samples
+            val amplitude = calculateAmplitude(audioData)
+            runOnMainThread {
+                voiceInputView?.updateWaveform(amplitude)
+            }
         }
+    }
+
+    /**
+     * Calculates the RMS (root mean square) amplitude from audio samples.
+     * Returns a value between 0 and 1.
+     */
+    private fun calculateAmplitude(samples: FloatArray): Float {
+        if (samples.isEmpty()) return 0f
+        var sum = 0f
+        for (sample in samples) {
+            sum += sample * sample
+        }
+        val rms = kotlin.math.sqrt(sum / samples.size)
+        // Scale RMS to a more visually useful range (typical speech RMS is 0.05-0.3)
+        return (rms * 3f).coerceIn(0f, 1f)
     }
 
     private fun stopRecording() {
