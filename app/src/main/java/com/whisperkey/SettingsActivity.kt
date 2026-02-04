@@ -62,6 +62,8 @@ class SettingsActivity : AppCompatActivity() {
             findPreference<ListPreference>("model_size")?.apply {
                 setOnPreferenceChangeListener { _, newValue ->
                     updateModelDownloadSummary(newValue as String)
+                    // Check if model is downloaded for new size, prompt if not
+                    checkAndPromptDownload(newValue as String)
                     true
                 }
             }
@@ -81,6 +83,21 @@ class SettingsActivity : AppCompatActivity() {
                     confirmDeleteModel()
                     true
                 }
+            }
+        }
+
+        private fun checkAndPromptDownload(modelSize: String) {
+            if (!modelManager.isModelDownloaded(modelSize)) {
+                val modelInfo = ModelManager.MODELS[modelSize]
+                val modelName = modelInfo?.displayName ?: modelSize
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Model Not Downloaded")
+                    .setMessage("The $modelName model is not downloaded. Would you like to download it now?")
+                    .setPositiveButton("Download") { _, _ ->
+                        downloadSelectedModel()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
             }
         }
 
@@ -132,8 +149,15 @@ class SettingsActivity : AppCompatActivity() {
                             if (isUsingSdCard) {
                                 modelManager.setUseSdCard(false)
                                 updateStorageSummary()
+                                updateModelDownloadSummary(
+                                    preferenceManager.sharedPreferences?.getString("model_size", "base") ?: "base"
+                                )
                                 Toast.makeText(requireContext(), "Storage set to Internal", Toast.LENGTH_SHORT).show()
                                 Logger.i("Settings", "Switched to internal storage")
+                                // Check if model exists in new location
+                                checkAndPromptDownload(
+                                    preferenceManager.sharedPreferences?.getString("model_size", "base") ?: "base"
+                                )
                             }
                         }
                         1 -> {
@@ -141,9 +165,16 @@ class SettingsActivity : AppCompatActivity() {
                             if (!isUsingSdCard) {
                                 modelManager.setUseSdCard(true)
                                 updateStorageSummary()
+                                updateModelDownloadSummary(
+                                    preferenceManager.sharedPreferences?.getString("model_size", "base") ?: "base"
+                                )
                                 val sdPath = modelManager.getSdCardModelsDirectory()?.absolutePath
                                 Toast.makeText(requireContext(), "Storage set to SD Card", Toast.LENGTH_SHORT).show()
                                 Logger.i("Settings", "Switched to SD card storage: $sdPath")
+                                // Check if model exists in new location
+                                checkAndPromptDownload(
+                                    preferenceManager.sharedPreferences?.getString("model_size", "base") ?: "base"
+                                )
                             }
                         }
                     }
@@ -154,17 +185,28 @@ class SettingsActivity : AppCompatActivity() {
 
         private fun updateModelDownloadSummary(modelSize: String) {
             val isDownloaded = modelManager.isModelDownloaded(modelSize)
-            findPreference<Preference>("download_model")?.summary = if (isDownloaded) {
-                val path = modelManager.getDownloadedModelPath(modelSize)
-                val location = if (path?.contains("/storage/emulated/0/Android/data") == true ||
-                    path?.startsWith(requireContext().filesDir.absolutePath) == true) {
-                    "Internal"
+            findPreference<Preference>("download_model")?.apply {
+                summary = if (isDownloaded) {
+                    val path = modelManager.getDownloadedModelPath(modelSize)
+                    val location = when {
+                        path?.startsWith(requireContext().filesDir.absolutePath) == true -> "Internal"
+                        path?.contains("/Android/data/") == true -> {
+                            if (path.contains("/storage/emulated/0/")) "Internal" else "SD Card"
+                        }
+                        else -> "External"
+                    }
+                    "${getString(R.string.model_download_complete)} ($location)"
                 } else {
-                    "Custom folder"
+                    val modelInfo = ModelManager.MODELS[modelSize]
+                    val sizeStr = modelInfo?.let { modelManager.formatBytes(it.sizeBytes) } ?: ""
+                    "Tap to download ($sizeStr)"
                 }
-                "${getString(R.string.model_download_complete)} ($location)"
-            } else {
-                getString(R.string.pref_download_model_summary)
+                // Update title to show status
+                title = if (isDownloaded) {
+                    "Download Model ✓"
+                } else {
+                    getString(R.string.pref_download_model_title)
+                }
             }
 
             findPreference<Preference>("delete_model")?.isEnabled = isDownloaded

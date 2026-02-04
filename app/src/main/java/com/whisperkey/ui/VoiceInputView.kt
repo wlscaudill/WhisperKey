@@ -3,13 +3,15 @@ package com.whisperkey.ui
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
-import android.widget.LinearLayout
 import android.widget.TextView
 import com.whisperkey.R
 
@@ -30,6 +32,8 @@ class VoiceInputView @JvmOverloads constructor(
 
     interface OnActionListener {
         fun onBackspaceClick()
+        fun onSpaceClick()
+        fun onEnterClick()
         fun onSettingsClick()
         fun onEmojiClick(emoji: String)
     }
@@ -40,12 +44,30 @@ class VoiceInputView @JvmOverloads constructor(
     private var isProcessing = false
     private var holdToRecord = false // false = tap to toggle, true = hold to record
 
+    // Backspace repeat handling
+    private val backspaceHandler = Handler(Looper.getMainLooper())
+    private var isBackspacePressed = false
+    private val backspaceRepeatRunnable = object : Runnable {
+        override fun run() {
+            if (isBackspacePressed) {
+                actionListener?.onBackspaceClick()
+                backspaceHandler.postDelayed(this, BACKSPACE_REPEAT_INTERVAL)
+            }
+        }
+    }
+
+    companion object {
+        private const val BACKSPACE_INITIAL_DELAY = 400L // ms before repeat starts
+        private const val BACKSPACE_REPEAT_INTERVAL = 50L // ms between repeats
+    }
+
     private val micButton: ImageButton
     private val statusText: TextView
     private val waveformContainer: FrameLayout
     private val backspaceButton: ImageButton
+    private val spaceButton: Button
+    private val enterButton: Button
     private val settingsButton: ImageButton
-    private val emojiContainer: LinearLayout
 
     private val waveformView: WaveformView
 
@@ -56,8 +78,9 @@ class VoiceInputView @JvmOverloads constructor(
         statusText = findViewById(R.id.status_text)
         waveformContainer = findViewById(R.id.waveform_container)
         backspaceButton = findViewById(R.id.backspace_button)
+        spaceButton = findViewById(R.id.space_button)
+        enterButton = findViewById(R.id.enter_button)
         settingsButton = findViewById(R.id.settings_button)
-        emojiContainer = findViewById(R.id.emoji_hotkeys_container)
 
         // Create and add waveform view programmatically
         waveformView = WaveformView(context)
@@ -104,8 +127,30 @@ class VoiceInputView @JvmOverloads constructor(
             }
         }
 
-        backspaceButton.setOnClickListener {
-            actionListener?.onBackspaceClick()
+        // Backspace with repeat when held
+        backspaceButton.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isBackspacePressed = true
+                    actionListener?.onBackspaceClick() // Immediate delete
+                    backspaceHandler.postDelayed(backspaceRepeatRunnable, BACKSPACE_INITIAL_DELAY)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    isBackspacePressed = false
+                    backspaceHandler.removeCallbacks(backspaceRepeatRunnable)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        spaceButton.setOnClickListener {
+            actionListener?.onSpaceClick()
+        }
+
+        enterButton.setOnClickListener {
+            actionListener?.onEnterClick()
         }
 
         settingsButton.setOnClickListener {
@@ -121,8 +166,8 @@ class VoiceInputView @JvmOverloads constructor(
         )
 
         for (id in emojiIds) {
-            findViewById<View>(id)?.setOnClickListener { view ->
-                if (view is android.widget.Button) {
+            findViewById<Button>(id)?.setOnClickListener { view ->
+                if (view is Button) {
                     actionListener?.onEmojiClick(view.text.toString())
                 }
             }
@@ -138,7 +183,7 @@ class VoiceInputView @JvmOverloads constructor(
             R.id.emoji_6, R.id.emoji_7, R.id.emoji_8, R.id.emoji_9, R.id.emoji_10
         )
         if (slot in 1..10) {
-            findViewById<android.widget.Button>(emojiIds[slot - 1])?.text = emoji
+            findViewById<Button>(emojiIds[slot - 1])?.text = emoji
         }
     }
 

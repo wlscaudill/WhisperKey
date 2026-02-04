@@ -88,6 +88,10 @@
     <string name="mic_button_description">Tap to start voice input</string>
     <string name="backspace_description">Delete</string>
     <string name="settings_description">Settings</string>
+    <string name="space_button">space</string>
+    <string name="enter_button">enter</string>
+    <string name="space_description">Space</string>
+    <string name="enter_description">Enter</string>
 
     <!-- Recording Mode -->
     <string name="pref_recording_mode_title">Recording Mode</string>

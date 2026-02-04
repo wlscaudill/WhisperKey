@@ -36,6 +36,17 @@
         android:layout_height="1dp"
         android:background="@color/keyboard_key_pressed" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"
+        android:text="Check to show on keyboard"
+        android:textSize="12sp"
+        android:textColor="@color/keyboard_text"
+        android:alpha="0.7" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/emoji_recycler"
         android:layout_width="match_parent"

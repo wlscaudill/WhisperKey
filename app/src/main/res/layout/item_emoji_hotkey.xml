@@ -1,41 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
     android:padding="12dp"
-    android:gravity="center_vertical"
     android:background="?attr/selectableItemBackground">
 
-    <TextView
-        android:id="@+id/trigger_text"
-        android:layout_width="0dp"
+    <!-- Checkbox on the left -->
+    <CheckBox
+        android:id="@+id/keyboard_checkbox"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textSize="16sp"
-        android:textColor="@color/on_background" />
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="12dp"
+        android:contentDescription="Show on keyboard" />
 
-    <TextView
-        android:id="@+id/emoji_text"
-        android:layout_width="48dp"
-        android:layout_height="wrap_content"
-        android:textSize="24sp"
-        android:gravity="center" />
-
-    <ImageButton
-        android:id="@+id/edit_button"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Edit"
-        android:src="@drawable/ic_edit" />
-
+    <!-- Delete button on far right -->
     <ImageButton
         android:id="@+id/delete_button"
         android:layout_width="40dp"
         android:layout_height="40dp"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/delete"
         android:src="@drawable/ic_delete" />
 
-</LinearLayout>
+    <!-- Edit button next to delete -->
+    <ImageButton
+        android:id="@+id/edit_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_toStartOf="@id/delete_button"
+        android:layout_centerVertical="true"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Edit"
+        android:src="@drawable/ic_edit" />
+
+    <!-- Emoji (large) -->
+    <TextView
+        android:id="@+id/emoji_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/keyboard_checkbox"
+        android:layout_toStartOf="@id/edit_button"
+        android:textSize="28sp"
+        android:textColor="#000000" />
+
+    <!-- Trigger text underneath emoji -->
+    <TextView
+        android:id="@+id/trigger_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/emoji_text"
+        android:layout_toEndOf="@id/keyboard_checkbox"
+        android:layout_toStartOf="@id/edit_button"
+        android:textSize="13sp"
+        android:textColor="#666666" />
+
+</RelativeLayout>

@@ -2,14 +2,42 @@
 
 ## Upcoming Tasks
 
-- [ ] Make emojis not overflow the edge to need scrolling, feel free to redesign the keyboard a little
-- [ ] increase size of text for tap to start and listening and the like so you can see what is happening.
-- [ ] Clean up emoji hotkey management; add a flag to the emojis that are converted from text to have it show on the keyboard; store in settings the emojis list so they will not be overwritten on update
-- [ ] add space and enter/go/whatever buttons
+- [x] Make emojis not overflow the edge to need scrolling, feel free to redesign the keyboard a little
+- [x] increase size of text for tap to start and listening and the like so you can see what is happening.
+- [x] Clean up emoji hotkey management; add a flag to the emojis that are converted from text to have it show on the keyboard; store in settings the emojis list so they will not be overwritten on update
+- [x] add space and enter/go/whatever buttons
 - [ ] add button to switch to 10 key and button on that to switch back (maybe tabs)
-- [ ] add button to switch to fully capable qwery and button on that to switch back (maybe tabs)
-- [ ] when a model size or location is changed check for the presence of the model and prompt a confirmation box to download
-- [ ] when a model is downloaded change the text under download model to reflec that fact
+- [ ] add button to switch to fully capable qwerty and button on that to switch back (maybe tabs)
+
+### Implementation Plan for Keyboard Tabs
+
+**Approach:** Create a ViewPager or ViewFlipper-based keyboard with 3 modes:
+1. Voice Input (current default)
+2. 10-Key Numeric
+3. QWERTY
+
+**Files to Create:**
+- `NumericKeyboardView.kt` - 10-key layout (0-9, *, #, backspace, space)
+- `QwertyKeyboardView.kt` - Full QWERTY with shift, symbols layer
+- `res/layout/numeric_keyboard_view.xml`
+- `res/layout/qwerty_keyboard_view.xml`
+
+**Files to Modify:**
+- `WhisperKeyboardService.kt` - Add ViewFlipper to switch between keyboard modes
+- `VoiceInputView.kt` - Add mode switch button (e.g., "ABC" button to go to QWERTY)
+
+**UI Design:**
+- Voice mode: Add small "123" button → switches to 10-key
+- 10-key mode: Add "ABC" button → switches to QWERTY, "🎤" button → back to voice
+- QWERTY mode: Add "123" button → switches to 10-key, "🎤" button → back to voice
+
+**Key Components:**
+1. Mode enum: VOICE, NUMERIC, QWERTY
+2. ViewFlipper containing all 3 keyboard views
+3. Each keyboard has navigation buttons to other modes
+4. Remember last text-input mode (NUMERIC or QWERTY) for quick toggle
+- [x] when a model size or location is changed check for the presence of the model and prompt a confirmation box to download
+- [x] when a model is downloaded change the text under download model to reflect that fact
 
 ---
 

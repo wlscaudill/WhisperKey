@@ -93,6 +93,16 @@ class WhisperKeyboardService : InputMethodService() {
                     currentInputConnection?.deleteSurroundingText(1, 0)
                 }
 
+                override fun onSpaceClick() {
+                    Logger.d(TAG, "Space clicked")
+                    currentInputConnection?.commitText(" ", 1)
+                }
+
+                override fun onEnterClick() {
+                    Logger.d(TAG, "Enter clicked")
+                    currentInputConnection?.commitText("\n", 1)
+                }
+
                 override fun onSettingsClick() {
                     Logger.d(TAG, "Settings clicked")
                     openSettings()
@@ -141,6 +151,12 @@ class WhisperKeyboardService : InputMethodService() {
         val holdToRecord = recordingMode == "hold_to_record"
         voiceInputView?.setRecordingMode(holdToRecord)
         Logger.d(TAG, "Recording mode: $recordingMode (holdToRecord: $holdToRecord)")
+
+        // Load keyboard emojis
+        val keyboardEmojis = emojiManager?.getKeyboardEmojis() ?: EmojiManager.DEFAULT_KEYBOARD_EMOJIS
+        keyboardEmojis.forEachIndexed { index, emoji ->
+            voiceInputView?.setEmoji(index + 1, emoji)
+        }
     }
 
     override fun onFinishInput() {

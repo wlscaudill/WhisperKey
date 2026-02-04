@@ -7,6 +7,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.view.WindowManager
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -17,7 +19,7 @@ import com.whisperkey.EmojiManager
 import com.whisperkey.R
 
 /**
- * Dialog for managing emoji hotkeys.
+ * Dialog for managing emoji hotkeys and keyboard emojis.
  */
 class EmojiPickerDialog(context: Context) : Dialog(context) {
 
@@ -29,6 +31,12 @@ class EmojiPickerDialog(context: Context) : Dialog(context) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setContentView(R.layout.dialog_emoji_picker)
+
+        // Make dialog full width
+        window?.setLayout(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT
+        )
 
         emojiManager = EmojiManager(context)
 
@@ -42,7 +50,9 @@ class EmojiPickerDialog(context: Context) : Dialog(context) {
 
         adapter = EmojiHotkeyAdapter(
             onEdit = { hotkey -> showEditDialog(hotkey) },
-            onDelete = { hotkey -> confirmDelete(hotkey) }
+            onDelete = { hotkey -> confirmDelete(hotkey) },
+            onToggleKeyboard = { hotkey -> toggleKeyboardEmoji(hotkey) },
+            keyboardEmojis = emojiManager.getKeyboardEmojis()
         )
         recyclerView.adapter = adapter
 
@@ -56,7 +66,30 @@ class EmojiPickerDialog(context: Context) : Dialog(context) {
     }
 
     private fun loadHotkeys() {
+        adapter.updateKeyboardEmojis(emojiManager.getKeyboardEmojis())
         adapter.submitList(emojiManager.getHotkeys())
+    }
+
+    private fun toggleKeyboardEmoji(hotkey: EmojiManager.EmojiHotkey) {
+        val currentEmojis = emojiManager.getKeyboardEmojis().toMutableList()
+
+        if (currentEmojis.contains(hotkey.emoji)) {
+            // Remove from keyboard - find its position and replace with a default
+            val index = currentEmojis.indexOf(hotkey.emoji)
+            val defaults = EmojiManager.DEFAULT_KEYBOARD_EMOJIS
+            val replacement = defaults.firstOrNull { !currentEmojis.contains(it) } ?: "😀"
+            currentEmojis[index] = replacement
+        } else {
+            // Add to keyboard - find first slot not already used by a hotkey emoji
+            // or replace the last one
+            val hotkeyEmojis = emojiManager.getHotkeys().map { it.emoji }
+            val freeIndex = currentEmojis.indexOfFirst { !hotkeyEmojis.contains(it) }
+            val indexToReplace = if (freeIndex >= 0) freeIndex else 9
+            currentEmojis[indexToReplace] = hotkey.emoji
+        }
+
+        emojiManager.setKeyboardEmojis(currentEmojis)
+        adapter.updateKeyboardEmojis(currentEmojis)
     }
 
     private fun showEditDialog(hotkey: EmojiManager.EmojiHotkey?) {
@@ -100,17 +133,24 @@ class EmojiPickerDialog(context: Context) : Dialog(context) {
     }
 
     /**
-     * Adapter for emoji hotkey list.
+     * Adapter for emoji hotkey list with keyboard toggle.
      */
     private class EmojiHotkeyAdapter(
         private val onEdit: (EmojiManager.EmojiHotkey) -> Unit,
-        private val onDelete: (EmojiManager.EmojiHotkey) -> Unit
+        private val onDelete: (EmojiManager.EmojiHotkey) -> Unit,
+        private val onToggleKeyboard: (EmojiManager.EmojiHotkey) -> Unit,
+        private var keyboardEmojis: List<String>
     ) : RecyclerView.Adapter<EmojiHotkeyAdapter.ViewHolder>() {
 
         private var items: List<EmojiManager.EmojiHotkey> = emptyList()
 
         fun submitList(list: List<EmojiManager.EmojiHotkey>) {
             items = list
+            notifyDataSetChanged()
+        }
+
+        fun updateKeyboardEmojis(emojis: List<String>) {
+            keyboardEmojis = emojis
             notifyDataSetChanged()
         }
 
@@ -131,13 +171,19 @@ class EmojiPickerDialog(context: Context) : Dialog(context) {
             private val emojiText: TextView = itemView.findViewById(R.id.emoji_text)
             private val editButton: ImageButton = itemView.findViewById(R.id.edit_button)
             private val deleteButton: ImageButton = itemView.findViewById(R.id.delete_button)
+            private val keyboardCheckbox: CheckBox? = itemView.findViewById(R.id.keyboard_checkbox)
 
             fun bind(hotkey: EmojiManager.EmojiHotkey) {
-                triggerText.text = hotkey.trigger
                 emojiText.text = hotkey.emoji
+                triggerText.text = "say \"${hotkey.trigger}\""
 
                 editButton.setOnClickListener { onEdit(hotkey) }
                 deleteButton.setOnClickListener { onDelete(hotkey) }
+
+                keyboardCheckbox?.apply {
+                    isChecked = keyboardEmojis.contains(hotkey.emoji)
+                    setOnClickListener { onToggleKeyboard(hotkey) }
+                }
             }
         }
     }
