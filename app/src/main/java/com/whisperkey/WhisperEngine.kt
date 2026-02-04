@@ -19,7 +19,7 @@ class WhisperEngine(private val context: Context) {
     companion object {
         private const val TAG = "WhisperEngine"
         private const val SAMPLE_RATE = 16000
-        private val NUM_THREADS = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+        private val NUM_THREADS = Runtime.getRuntime().availableProcessors().coerceIn(2, 8)
 
         init {
             try {

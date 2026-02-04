@@ -29,7 +29,7 @@ class ModelManager(private val context: Context) {
         private const val TAG = "ModelManager"
         private const val BASE_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
         private const val MODELS_SUBDIR = "whisper_models"
-        private const val PREF_CUSTOM_STORAGE_URI = "custom_storage_uri"
+        private const val PREF_USE_SDCARD = "use_sdcard_storage"
 
         // English-only models for better performance
         val MODELS = mapOf(
@@ -86,38 +86,55 @@ class ModelManager(private val context: Context) {
     // ==================== Storage Location Methods ====================
 
     /**
-     * Check if a custom storage location is set.
+     * Check if using SD card storage.
      */
-    fun hasCustomStorage(): Boolean {
-        return getCustomStorageUri() != null
+    fun isUsingSdCard(): Boolean {
+        return prefs.getBoolean(PREF_USE_SDCARD, false)
     }
 
     /**
-     * Get the custom storage URI if set.
+     * Set whether to use SD card storage.
      */
-    fun getCustomStorageUri(): String? {
-        return prefs.getString(PREF_CUSTOM_STORAGE_URI, null)
+    fun setUseSdCard(useSdCard: Boolean) {
+        Logger.i(TAG, "Setting use SD card: $useSdCard")
+        prefs.edit().putBoolean(PREF_USE_SDCARD, useSdCard).apply()
     }
 
     /**
-     * Set a custom storage location from a SAF tree URI.
+     * Check if SD card storage is available.
+     * Returns true if there's a secondary external storage (SD card).
      */
-    fun setCustomStorageUri(uri: String?) {
-        Logger.i(TAG, "Setting custom storage URI: $uri")
-        if (uri != null) {
-            prefs.edit().putString(PREF_CUSTOM_STORAGE_URI, uri).apply()
-        } else {
-            prefs.edit().remove(PREF_CUSTOM_STORAGE_URI).apply()
+    fun isSdCardAvailable(): Boolean {
+        val dirs = context.getExternalFilesDirs(null)
+        // First dir is primary external (usually internal), second+ are SD cards
+        return dirs.size > 1 && dirs[1] != null && (dirs[1]?.canWrite() == true)
+    }
+
+    /**
+     * Get the SD card app directory for models.
+     * Returns null if SD card is not available.
+     */
+    fun getSdCardModelsDirectory(): File? {
+        val dirs = context.getExternalFilesDirs(null)
+        if (dirs.size > 1 && dirs[1] != null) {
+            val sdCardDir = dirs[1]
+            val modelsDir = File(sdCardDir, MODELS_SUBDIR)
+            if (!modelsDir.exists()) {
+                val created = modelsDir.mkdirs()
+                Logger.d(TAG, "Created SD card models directory: $created - ${modelsDir.absolutePath}")
+            }
+            return modelsDir
         }
+        return null
     }
 
     /**
      * Get a human-readable name for the current storage location.
      */
     fun getStorageDisplayName(): String {
-        val customUri = getCustomStorageUri()
-        return if (customUri != null) {
-            StorageHelper.getStorageDisplayName(context, customUri)
+        return if (isUsingSdCard()) {
+            val sdDir = getSdCardModelsDirectory()
+            if (sdDir != null) "SD Card" else "SD Card (unavailable)"
         } else {
             "Internal App Storage"
         }
@@ -136,20 +153,21 @@ class ModelManager(private val context: Context) {
     }
 
     /**
+     * Get the current models directory based on storage setting.
+     */
+    fun getCurrentModelsDirectory(): File {
+        return if (isUsingSdCard()) {
+            getSdCardModelsDirectory() ?: getInternalModelsDirectory()
+        } else {
+            getInternalModelsDirectory()
+        }
+    }
+
+    /**
      * Get available space for the current storage location.
      */
     fun getAvailableSpace(): Long {
-        val customUri = getCustomStorageUri()
-        return if (customUri != null) {
-            val path = StorageHelper.getFilePathFromUri(context, customUri)
-            if (path != null) {
-                File(path).freeSpace
-            } else {
-                0L
-            }
-        } else {
-            getInternalModelsDirectory().freeSpace
-        }
+        return getCurrentModelsDirectory().freeSpace
     }
 
     // ==================== Model Management Methods ====================
@@ -184,32 +202,16 @@ class ModelManager(private val context: Context) {
             return internalPath.absolutePath
         }
 
-        // Check custom storage
-        val customUri = getCustomStorageUri()
-        if (customUri != null) {
-            // First try to get the file path directly
-            val customBasePath = StorageHelper.getFilePathFromUri(context, customUri)
-            if (customBasePath != null) {
-                val customPath = File(customBasePath, modelInfo.fileName)
-                Logger.d(TAG, "Checking custom path: ${customPath.absolutePath}")
-                Logger.d(TAG, "  exists: ${customPath.exists()}, size: ${if (customPath.exists()) customPath.length() else 0}")
+        // Check SD card storage
+        val sdCardDir = getSdCardModelsDirectory()
+        if (sdCardDir != null) {
+            val sdCardPath = File(sdCardDir, modelInfo.fileName)
+            Logger.d(TAG, "Checking SD card: ${sdCardPath.absolutePath}")
+            Logger.d(TAG, "  exists: ${sdCardPath.exists()}, size: ${if (sdCardPath.exists()) sdCardPath.length() else 0}")
 
-                if (customPath.exists() && customPath.length() > 0) {
-                    Logger.i(TAG, "Found model in custom storage: ${customPath.absolutePath}")
-                    return customPath.absolutePath
-                }
-            }
-
-            // Also check using DocumentFile (for SAF access)
-            val docFile = StorageHelper.findFileInStorage(context, customUri, modelInfo.fileName)
-            if (docFile != null && docFile.length() > 0) {
-                // Try to get the actual file path
-                val docPath = StorageHelper.getFilePathFromUri(context, customUri)
-                if (docPath != null) {
-                    val fullPath = "$docPath/${modelInfo.fileName}"
-                    Logger.i(TAG, "Found model via DocumentFile: $fullPath")
-                    return fullPath
-                }
+            if (sdCardPath.exists() && sdCardPath.length() > 0) {
+                Logger.i(TAG, "Found model on SD card: ${sdCardPath.absolutePath}")
+                return sdCardPath.absolutePath
             }
         }
 
@@ -222,19 +224,7 @@ class ModelManager(private val context: Context) {
      */
     fun getModelDownloadPath(modelSize: String): String? {
         val modelInfo = MODELS[modelSize] ?: return null
-
-        val customUri = getCustomStorageUri()
-        return if (customUri != null) {
-            val basePath = StorageHelper.getFilePathFromUri(context, customUri)
-            if (basePath != null) {
-                File(basePath, modelInfo.fileName).absolutePath
-            } else {
-                Logger.e(TAG, "Cannot convert custom URI to path")
-                null
-            }
-        } else {
-            File(getInternalModelsDirectory(), modelInfo.fileName).absolutePath
-        }
+        return File(getCurrentModelsDirectory(), modelInfo.fileName).absolutePath
     }
 
     /**
@@ -422,16 +412,13 @@ class ModelManager(private val context: Context) {
             deleted = internalFile.delete() || deleted
         }
 
-        // Delete from custom storage
-        val customUri = getCustomStorageUri()
-        if (customUri != null) {
-            val customPath = StorageHelper.getFilePathFromUri(context, customUri)
-            if (customPath != null) {
-                val customFile = File(customPath, modelInfo.fileName)
-                if (customFile.exists()) {
-                    Logger.d(TAG, "Deleting from custom: ${customFile.absolutePath}")
-                    deleted = customFile.delete() || deleted
-                }
+        // Delete from SD card storage
+        val sdCardDir = getSdCardModelsDirectory()
+        if (sdCardDir != null) {
+            val sdCardFile = File(sdCardDir, modelInfo.fileName)
+            if (sdCardFile.exists()) {
+                Logger.d(TAG, "Deleting from SD card: ${sdCardFile.absolutePath}")
+                deleted = sdCardFile.delete() || deleted
             }
         }
 

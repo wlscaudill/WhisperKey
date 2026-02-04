@@ -3,20 +3,16 @@ package com.whisperkey
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.whisperkey.util.Logger
-import com.whisperkey.util.StorageHelper
 import java.io.File
 
 /**
@@ -49,13 +45,6 @@ class SettingsActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
 
         private lateinit var modelManager: ModelManager
-
-        // SAF folder picker launcher
-        private val folderPickerLauncher = registerForActivityResult(
-            ActivityResultContracts.OpenDocumentTree()
-        ) { uri ->
-            uri?.let { handleFolderSelected(it) }
-        }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.preferences, rootKey)
@@ -110,103 +99,57 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         private fun showStorageOptions() {
-            val currentHasCustom = modelManager.hasCustomStorage()
+            val isUsingSdCard = modelManager.isUsingSdCard()
+            val sdCardAvailable = modelManager.isSdCardAvailable()
 
-            val options = if (currentHasCustom) {
-                arrayOf(
-                    "Internal App Storage",
-                    "Change Custom Folder...",
-                    "Reset to Internal Storage"
-                )
+            val options = mutableListOf<String>()
+            val optionIds = mutableListOf<Int>()
+
+            // Option 0: Internal storage
+            if (isUsingSdCard) {
+                options.add("Internal App Storage")
             } else {
-                arrayOf(
-                    "Internal App Storage (current)",
-                    "Choose Custom Folder..."
-                )
+                options.add("Internal App Storage (current)")
+            }
+            optionIds.add(0)
+
+            // Option 1: SD Card (if available)
+            if (sdCardAvailable) {
+                if (isUsingSdCard) {
+                    options.add("SD Card (current)")
+                } else {
+                    options.add("SD Card")
+                }
+                optionIds.add(1)
             }
 
             AlertDialog.Builder(requireContext())
                 .setTitle(R.string.pref_storage_location_title)
-                .setItems(options) { _, which ->
-                    when {
-                        // Internal storage selected (always first option)
-                        which == 0 && !currentHasCustom -> {
-                            // Already internal, do nothing
+                .setItems(options.toTypedArray()) { _, which ->
+                    when (optionIds[which]) {
+                        0 -> {
+                            // Internal storage
+                            if (isUsingSdCard) {
+                                modelManager.setUseSdCard(false)
+                                updateStorageSummary()
+                                Toast.makeText(requireContext(), "Storage set to Internal", Toast.LENGTH_SHORT).show()
+                                Logger.i("Settings", "Switched to internal storage")
+                            }
                         }
-                        // Choose/Change custom folder
-                        (which == 1 && !currentHasCustom) || (which == 1 && currentHasCustom) -> {
-                            openFolderPicker()
-                        }
-                        // Reset to internal (only when custom is set)
-                        which == 2 && currentHasCustom -> {
-                            resetToInternalStorage()
-                        }
-                        which == 0 && currentHasCustom -> {
-                            // "Internal App Storage" when custom is set - do nothing, show as info
+                        1 -> {
+                            // SD Card
+                            if (!isUsingSdCard) {
+                                modelManager.setUseSdCard(true)
+                                updateStorageSummary()
+                                val sdPath = modelManager.getSdCardModelsDirectory()?.absolutePath
+                                Toast.makeText(requireContext(), "Storage set to SD Card", Toast.LENGTH_SHORT).show()
+                                Logger.i("Settings", "Switched to SD card storage: $sdPath")
+                            }
                         }
                     }
                 }
                 .setNegativeButton(R.string.cancel, null)
                 .show()
-        }
-
-        private fun openFolderPicker() {
-            Logger.i("Settings", "Opening folder picker")
-            folderPickerLauncher.launch(null)
-        }
-
-        private fun handleFolderSelected(uri: Uri) {
-            Logger.i("Settings", "Folder selected: $uri")
-
-            // Take persistent permission
-            StorageHelper.takePersistentPermission(requireContext(), uri)
-
-            // Verify we can get a file path from this URI
-            val filePath = StorageHelper.getFilePathFromUri(requireContext(), uri.toString())
-            if (filePath == null) {
-                Logger.e("Settings", "Cannot access selected folder as file path")
-                Toast.makeText(
-                    requireContext(),
-                    "Cannot use this folder. Please select a folder on internal or external storage.",
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
-
-            // Verify the folder is writable
-            val testDir = File(filePath)
-            if (!testDir.exists()) {
-                testDir.mkdirs()
-            }
-            if (!testDir.canWrite()) {
-                Logger.e("Settings", "Selected folder is not writable: $filePath")
-                Toast.makeText(
-                    requireContext(),
-                    "Cannot write to selected folder",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return
-            }
-
-            // Save the custom storage URI
-            modelManager.setCustomStorageUri(uri.toString())
-            updateStorageSummary()
-
-            val displayName = StorageHelper.getStorageDisplayName(requireContext(), uri.toString())
-            Toast.makeText(
-                requireContext(),
-                "Storage set to: $displayName",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            Logger.i("Settings", "Custom storage set: $displayName ($filePath)")
-        }
-
-        private fun resetToInternalStorage() {
-            modelManager.setCustomStorageUri(null)
-            updateStorageSummary()
-            Toast.makeText(requireContext(), "Reset to Internal App Storage", Toast.LENGTH_SHORT).show()
-            Logger.i("Settings", "Reset to internal storage")
         }
 
         private fun updateModelDownloadSummary(modelSize: String) {
@@ -380,25 +323,16 @@ class SettingsActivity : AppCompatActivity() {
                 appendLine()
 
                 appendLine("=== Storage Settings ===")
-                appendLine("Display name: ${modelManager.getStorageDisplayName()}")
-                appendLine("Custom URI: ${modelManager.getCustomStorageUri() ?: "Not set"}")
+                appendLine("Current: ${modelManager.getStorageDisplayName()}")
+                appendLine("Using SD Card: ${modelManager.isUsingSdCard()}")
+                appendLine("SD Card available: ${modelManager.isSdCardAvailable()}")
                 appendLine("Internal dir: ${modelManager.getInternalModelsDirectory().absolutePath}")
-                appendLine("Available space: ${modelManager.formatBytes(modelManager.getAvailableSpace())}")
-
-                val customUri = modelManager.getCustomStorageUri()
-                if (customUri != null) {
-                    appendLine()
-                    appendLine("=== Custom Storage ===")
-                    appendLine("URI: $customUri")
-                    val customPath = StorageHelper.getFilePathFromUri(requireContext(), customUri)
-                    appendLine("File path: ${customPath ?: "Cannot resolve"}")
-                    if (customPath != null) {
-                        val customDir = File(customPath)
-                        appendLine("Exists: ${customDir.exists()}")
-                        appendLine("Writable: ${customDir.canWrite()}")
-                    }
-                    appendLine("Has permission: ${StorageHelper.hasPersistentPermission(requireContext(), customUri)}")
+                val sdDir = modelManager.getSdCardModelsDirectory()
+                if (sdDir != null) {
+                    appendLine("SD Card dir: ${sdDir.absolutePath}")
+                    appendLine("SD Card writable: ${sdDir.canWrite()}")
                 }
+                appendLine("Available space: ${modelManager.formatBytes(modelManager.getAvailableSpace())}")
 
                 appendLine()
                 appendLine("=== Whisper Engine ===")

@@ -44,7 +44,7 @@ class WhisperKeyboardService : InputMethodService() {
         Logger.i(TAG, "=== Loading Model ===")
         Logger.i(TAG, "Model size: $modelSize")
         Logger.i(TAG, "Storage: ${modelManager?.getStorageDisplayName()}")
-        Logger.i(TAG, "Custom URI: ${modelManager?.getCustomStorageUri() ?: "not set"}")
+        Logger.i(TAG, "Using SD Card: ${modelManager?.isUsingSdCard()}")
 
         // Check if model is downloaded
         val isDownloaded = modelManager?.isModelDownloaded(modelSize) ?: false

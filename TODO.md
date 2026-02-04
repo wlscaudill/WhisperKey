@@ -1,4 +1,19 @@
-# WhisperKey Storage Location Fixes
+# WhisperKey TODO
+
+## Upcoming Tasks
+
+- [ ] Make emojis not overflow the edge to need scrolling, feel free to redesign the keyboard a little
+- [ ] increase size of text for tap to start and listening and the like so you can see what is happening.
+- [ ] Clean up emoji hotkey management; add a flag to the emojis that are converted from text to have it show on the keyboard; store in settings the emojis list so they will not be overwritten on update
+- [ ] add space and enter/go/whatever buttons
+- [ ] add button to switch to 10 key and button on that to switch back (maybe tabs)
+- [ ] add button to switch to fully capable qwery and button on that to switch back (maybe tabs)
+- [ ] when a model size or location is changed check for the presence of the model and prompt a confirmation box to download
+- [ ] when a model is downloaded change the text under download model to reflec that fact
+
+---
+
+# Storage Location Fixes (COMPLETED)
 
 ## Issues Addressed (COMPLETED)
 
