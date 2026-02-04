@@ -1,6 +1,7 @@
 package com.whisperkey.ui
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -74,14 +75,13 @@ class QwertyKeyboardView @JvmOverloads constructor(
     }
 
     private fun buildKeyboard() {
-        val keyHeight = dpToPx(44)
         val keyMargin = dpToPx(2)
 
         // Build 3 rows of character keys
         for (i in letterRows.indices) {
             val row = LinearLayout(context).apply {
                 orientation = HORIZONTAL
-                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
                 gravity = Gravity.CENTER
                 val hPad = if (i == 1) dpToPx(16) else dpToPx(4)
                 setPadding(hPad, dpToPx(2), hPad, dpToPx(2))
@@ -93,7 +93,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
             if (i == 2) {
                 shiftButton = Button(context).apply {
                     text = "\u21E7" // ⇧
-                    layoutParams = LayoutParams(0, keyHeight, 1.5f).apply {
+                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.5f).apply {
                         marginStart = keyMargin
                         marginEnd = keyMargin
                     }
@@ -113,7 +113,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
             for (key in letterRows[i]) {
                 val btn = Button(context).apply {
                     text = key
-                    layoutParams = LayoutParams(0, keyHeight, 1f).apply {
+                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
                         marginStart = keyMargin
                         marginEnd = keyMargin
                     }
@@ -140,7 +140,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
             // Row 3: add backspace button after letter keys
             if (i == 2) {
                 val backspaceButton = ImageButton(context).apply {
-                    layoutParams = LayoutParams(0, keyHeight, 1.5f).apply {
+                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 2.5f).apply {
                         marginStart = keyMargin
                         marginEnd = keyMargin
                     }
@@ -217,6 +217,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
             contentDescription = context.getString(R.string.mic_button_description)
+            imageTintList = ColorStateList.valueOf(context.getColor(R.color.icon_tint))
             setOnClickListener { listener?.onSwitchToVoice() }
         }
         bottomRow.addView(voiceButton)
@@ -241,7 +242,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
         // Space
         val spaceButton = Button(context).apply {
             text = context.getString(R.string.space_button)
-            layoutParams = LayoutParams(0, bottomHeight, 3f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 1.2f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }
@@ -276,7 +277,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
         // Enter
         val enterButton = Button(context).apply {
             text = context.getString(R.string.enter_button)
-            layoutParams = LayoutParams(0, bottomHeight, 1.2f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 3f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }

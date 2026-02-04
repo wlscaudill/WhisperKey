@@ -2,68 +2,89 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/keyboard_background"
-    android:gravity="center_horizontal">
+    android:background="@color/keyboard_background">
 
-    <!-- Status Text - Larger for visibility -->
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/voice_input_hint"
-        android:textColor="@color/keyboard_text"
-        android:textSize="20sp"
-        android:textStyle="bold" />
-
-    <!-- Waveform Visualizer -->
-    <FrameLayout
-        android:id="@+id/waveform_container"
+    <!-- Top Row: Status/Waveform on left, Mic button on right -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="8dp"
-        android:visibility="invisible">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp"
+        android:paddingTop="6dp">
 
-        <View
-            android:id="@+id/waveform_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+        <!-- Left: Status text + Waveform stacked -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:layout_marginEnd="8dp">
 
-    </FrameLayout>
+            <!-- Status Text -->
+            <TextView
+                android:id="@+id/status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/voice_input_hint"
+                android:textColor="@color/keyboard_text"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-    <!-- Mic Button -->
-    <ImageButton
-        android:id="@+id/mic_button"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/mic_button_background"
-        android:contentDescription="@string/mic_button_description"
-        android:src="@drawable/ic_mic"
-        android:scaleType="centerInside"
-        android:padding="20dp" />
+            <!-- Waveform Visualizer -->
+            <FrameLayout
+                android:id="@+id/waveform_container"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="4dp"
+                android:visibility="invisible">
+
+                <View
+                    android:id="@+id/waveform_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <!-- Mic Button -->
+        <ImageButton
+            android:id="@+id/mic_button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/mic_button_background"
+            android:contentDescription="@string/mic_button_description"
+            android:src="@drawable/ic_mic"
+            android:scaleType="centerInside"
+            android:padding="14dp" />
+
+    </LinearLayout>
 
     <!-- Emoji Grid - 2 rows of 5 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="vertical"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:paddingHorizontal="4dp">
 
         <!-- Row 1: Emojis 1-5 -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center">
 
             <Button
                 android:id="@+id/emoji_1"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="👍"
                 tools:ignore="HardcodedText" />
@@ -71,6 +92,7 @@
             <Button
                 android:id="@+id/emoji_2"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="❤️"
                 tools:ignore="HardcodedText" />
@@ -78,6 +100,7 @@
             <Button
                 android:id="@+id/emoji_3"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="😂"
                 tools:ignore="HardcodedText" />
@@ -85,6 +108,7 @@
             <Button
                 android:id="@+id/emoji_4"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="😊"
                 tools:ignore="HardcodedText" />
@@ -92,6 +116,7 @@
             <Button
                 android:id="@+id/emoji_5"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="🙏"
                 tools:ignore="HardcodedText" />
@@ -101,13 +126,15 @@
         <!-- Row 2: Emojis 6-10 -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center">
 
             <Button
                 android:id="@+id/emoji_6"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="😢"
                 tools:ignore="HardcodedText" />
@@ -115,6 +142,7 @@
             <Button
                 android:id="@+id/emoji_7"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="😮"
                 tools:ignore="HardcodedText" />
@@ -122,6 +150,7 @@
             <Button
                 android:id="@+id/emoji_8"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="🎉"
                 tools:ignore="HardcodedText" />
@@ -129,6 +158,7 @@
             <Button
                 android:id="@+id/emoji_9"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="🔥"
                 tools:ignore="HardcodedText" />
@@ -136,6 +166,7 @@
             <Button
                 android:id="@+id/emoji_10"
                 style="@style/EmojiButton"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="✅"
                 tools:ignore="HardcodedText" />
@@ -144,32 +175,32 @@
 
     </LinearLayout>
 
-    <!-- Bottom Utility Row with Space and Enter -->
+    <!-- Bottom Utility Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
         android:paddingHorizontal="8dp"
-        android:paddingVertical="8dp">
+        android:paddingVertical="6dp">
 
         <!-- Settings Button -->
         <ImageButton
             android:id="@+id/settings_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:layout_weight="0.8"
             android:background="@drawable/utility_button_background"
             android:contentDescription="@string/settings_description"
             android:src="@drawable/ic_settings"
             android:scaleType="centerInside"
-            android:padding="12dp" />
+            android:padding="10dp" />
 
         <!-- 123 Button - switch to numeric -->
         <Button
             android:id="@+id/numeric_mode_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:layout_weight="0.8"
             android:layout_marginHorizontal="4dp"
             android:background="@drawable/utility_button_background"
@@ -183,8 +214,8 @@
         <Button
             android:id="@+id/space_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="2"
+            android:layout_height="44dp"
+            android:layout_weight="1"
             android:layout_marginHorizontal="4dp"
             android:background="@drawable/utility_button_background"
             android:text="@string/space_button"
@@ -196,7 +227,7 @@
         <Button
             android:id="@+id/qwerty_mode_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:layout_weight="0.8"
             android:layout_marginEnd="4dp"
             android:background="@drawable/utility_button_background"
@@ -210,21 +241,21 @@
         <ImageButton
             android:id="@+id/backspace_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="0.8"
+            android:layout_height="44dp"
+            android:layout_weight="1.3"
             android:layout_marginEnd="4dp"
             android:background="@drawable/utility_button_background"
             android:contentDescription="@string/backspace_description"
             android:src="@drawable/ic_backspace"
             android:scaleType="centerInside"
-            android:padding="12dp" />
+            android:padding="10dp" />
 
         <!-- Enter Button -->
         <Button
             android:id="@+id/enter_button"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
+            android:layout_height="44dp"
+            android:layout_weight="1.1"
             android:background="@drawable/utility_button_background"
             android:text="@string/enter_button"
             android:textColor="@color/keyboard_text"

@@ -46,18 +46,9 @@ class EmojiManager(private val context: Context) {
     private fun loadHotkeys() {
         hotkeys.clear()
 
-        // Load defaults
-        val defaults = context.resources.getStringArray(R.array.default_emoji_hotkeys)
-        for (entry in defaults) {
-            val parts = entry.split(HOTKEY_SEPARATOR)
-            if (parts.size == 2) {
-                hotkeys[parts[0].lowercase()] = parts[1]
-            }
-        }
-
-        // Load custom hotkeys (override defaults)
-        val customString = preferences.getString(PREF_CUSTOM_HOTKEYS, "") ?: ""
-        if (customString.isNotEmpty()) {
+        val customString = preferences.getString(PREF_CUSTOM_HOTKEYS, null)
+        if (customString != null && customString.isNotEmpty()) {
+            // User has saved settings — use those exclusively
             val entries = customString.split(ENTRY_SEPARATOR)
             for (entry in entries) {
                 val parts = entry.split(HOTKEY_SEPARATOR)
@@ -65,6 +56,9 @@ class EmojiManager(private val context: Context) {
                     hotkeys[parts[0].lowercase()] = parts[1]
                 }
             }
+        } else {
+            // No saved settings — use defaults
+            hotkeys.putAll(getDefaultHotkeys())
         }
 
         isEnabled = preferences.getBoolean("emoji_hotkeys_enabled", true)
@@ -102,7 +96,7 @@ class EmojiManager(private val context: Context) {
      */
     fun setHotkey(trigger: String, emoji: String) {
         hotkeys[trigger.lowercase()] = emoji
-        saveCustomHotkeys()
+        saveHotkeys()
     }
 
     /**
@@ -111,7 +105,7 @@ class EmojiManager(private val context: Context) {
      */
     fun removeHotkey(trigger: String) {
         hotkeys.remove(trigger.lowercase())
-        saveCustomHotkeys()
+        saveHotkeys()
     }
 
     /**
@@ -157,22 +151,21 @@ class EmojiManager(private val context: Context) {
         loadHotkeys()
     }
 
-    private fun saveCustomHotkeys() {
-        val defaults = context.resources.getStringArray(R.array.default_emoji_hotkeys)
-            .associate {
-                val parts = it.split(HOTKEY_SEPARATOR)
-                parts[0].lowercase() to parts[1]
-            }
+    private fun getDefaultHotkeys(): Map<String, String> {
+        return context.resources.getStringArray(R.array.default_emoji_hotkeys)
+            .mapNotNull { entry ->
+                val parts = entry.split(HOTKEY_SEPARATOR)
+                if (parts.size == 2) parts[0].lowercase() to parts[1] else null
+            }.toMap()
+    }
 
-        // Only save non-default entries
-        val customEntries = hotkeys.filter { (trigger, emoji) ->
-            defaults[trigger] != emoji
-        }.map { (trigger, emoji) ->
+    private fun saveHotkeys() {
+        val entries = hotkeys.map { (trigger, emoji) ->
             "$trigger$HOTKEY_SEPARATOR$emoji"
         }.joinToString(ENTRY_SEPARATOR)
 
         preferences.edit()
-            .putString(PREF_CUSTOM_HOTKEYS, customEntries)
+            .putString(PREF_CUSTOM_HOTKEYS, entries)
             .apply()
     }
 

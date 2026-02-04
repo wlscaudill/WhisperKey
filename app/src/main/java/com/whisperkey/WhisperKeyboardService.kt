@@ -90,7 +90,7 @@ class WhisperKeyboardService : InputMethodService() {
         viewFlipper = ViewFlipper(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                dpToPx(220)
             )
         }
 
@@ -188,13 +188,13 @@ class WhisperKeyboardService : InputMethodService() {
             })
         }
 
-        val wrapContent = ViewGroup.LayoutParams(
+        val fillParent = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT
         )
-        viewFlipper!!.addView(voiceInputView, wrapContent)
-        viewFlipper!!.addView(numericKeyboardView, wrapContent)
-        viewFlipper!!.addView(qwertyKeyboardView, wrapContent)
+        viewFlipper!!.addView(voiceInputView, fillParent)
+        viewFlipper!!.addView(numericKeyboardView, fillParent)
+        viewFlipper!!.addView(qwertyKeyboardView, fillParent)
 
         return viewFlipper!!
     }
@@ -344,5 +344,9 @@ class WhisperKeyboardService : InputMethodService() {
 
     private fun runOnMainThread(action: () -> Unit) {
         voiceInputView?.post(action)
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 }
