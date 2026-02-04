@@ -6,8 +6,8 @@
 - [x] increase size of text for tap to start and listening and the like so you can see what is happening.
 - [x] Clean up emoji hotkey management; add a flag to the emojis that are converted from text to have it show on the keyboard; store in settings the emojis list so they will not be overwritten on update
 - [x] add space and enter/go/whatever buttons
-- [ ] add button to switch to 10 key and button on that to switch back (maybe tabs)
-- [ ] add button to switch to fully capable qwerty and button on that to switch back (maybe tabs)
+- [x] add button to switch to 10 key and button on that to switch back (maybe tabs)
+- [x] add button to switch to fully capable qwerty and button on that to switch back (maybe tabs)
 
 ### Implementation Plan for Keyboard Tabs
 

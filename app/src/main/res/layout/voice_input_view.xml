@@ -153,24 +153,38 @@
         android:paddingHorizontal="8dp"
         android:paddingVertical="8dp">
 
-        <!-- Backspace Button -->
+        <!-- Settings Button -->
         <ImageButton
-            android:id="@+id/backspace_button"
+            android:id="@+id/settings_button"
             android:layout_width="0dp"
             android:layout_height="48dp"
-            android:layout_weight="1"
+            android:layout_weight="0.8"
             android:background="@drawable/utility_button_background"
-            android:contentDescription="@string/backspace_description"
-            android:src="@drawable/ic_backspace"
+            android:contentDescription="@string/settings_description"
+            android:src="@drawable/ic_settings"
             android:scaleType="centerInside"
             android:padding="12dp" />
+
+        <!-- 123 Button - switch to numeric -->
+        <Button
+            android:id="@+id/numeric_mode_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="0.8"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/utility_button_background"
+            android:text="123"
+            android:textColor="@color/keyboard_text"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            tools:ignore="HardcodedText" />
 
         <!-- Space Button -->
         <Button
             android:id="@+id/space_button"
             android:layout_width="0dp"
             android:layout_height="48dp"
-            android:layout_weight="3"
+            android:layout_weight="2"
             android:layout_marginHorizontal="4dp"
             android:background="@drawable/utility_button_background"
             android:text="@string/space_button"
@@ -178,30 +192,44 @@
             android:textSize="12sp"
             android:textAllCaps="false" />
 
+        <!-- ABC Button - switch to QWERTY -->
+        <Button
+            android:id="@+id/qwerty_mode_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="0.8"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/utility_button_background"
+            android:text="ABC"
+            android:textColor="@color/keyboard_text"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            tools:ignore="HardcodedText" />
+
+        <!-- Backspace Button -->
+        <ImageButton
+            android:id="@+id/backspace_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="0.8"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/utility_button_background"
+            android:contentDescription="@string/backspace_description"
+            android:src="@drawable/ic_backspace"
+            android:scaleType="centerInside"
+            android:padding="12dp" />
+
         <!-- Enter Button -->
         <Button
             android:id="@+id/enter_button"
             android:layout_width="0dp"
             android:layout_height="48dp"
-            android:layout_weight="1.5"
-            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
             android:background="@drawable/utility_button_background"
             android:text="@string/enter_button"
             android:textColor="@color/keyboard_text"
             android:textSize="12sp"
             android:textAllCaps="false" />
-
-        <!-- Settings Button -->
-        <ImageButton
-            android:id="@+id/settings_button"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:background="@drawable/utility_button_background"
-            android:contentDescription="@string/settings_description"
-            android:src="@drawable/ic_settings"
-            android:scaleType="centerInside"
-            android:padding="12dp" />
 
     </LinearLayout>
 

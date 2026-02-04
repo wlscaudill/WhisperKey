@@ -36,6 +36,8 @@ class VoiceInputView @JvmOverloads constructor(
         fun onEnterClick()
         fun onSettingsClick()
         fun onEmojiClick(emoji: String)
+        fun onSwitchToNumeric() {}
+        fun onSwitchToQwerty() {}
     }
 
     private var recordingListener: OnRecordingListener? = null
@@ -68,6 +70,8 @@ class VoiceInputView @JvmOverloads constructor(
     private val spaceButton: Button
     private val enterButton: Button
     private val settingsButton: ImageButton
+    private val numericModeButton: Button
+    private val qwertyModeButton: Button
 
     private val waveformView: WaveformView
 
@@ -81,6 +85,8 @@ class VoiceInputView @JvmOverloads constructor(
         spaceButton = findViewById(R.id.space_button)
         enterButton = findViewById(R.id.enter_button)
         settingsButton = findViewById(R.id.settings_button)
+        numericModeButton = findViewById(R.id.numeric_mode_button)
+        qwertyModeButton = findViewById(R.id.qwerty_mode_button)
 
         // Create and add waveform view programmatically
         waveformView = WaveformView(context)
@@ -155,6 +161,14 @@ class VoiceInputView @JvmOverloads constructor(
 
         settingsButton.setOnClickListener {
             actionListener?.onSettingsClick()
+        }
+
+        numericModeButton.setOnClickListener {
+            actionListener?.onSwitchToNumeric()
+        }
+
+        qwertyModeButton.setOnClickListener {
+            actionListener?.onSwitchToQwerty()
         }
     }
 

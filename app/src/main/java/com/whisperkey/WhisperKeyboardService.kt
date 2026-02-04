@@ -2,22 +2,33 @@ package com.whisperkey
 
 import android.inputmethodservice.InputMethodService
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.ViewFlipper
 import androidx.preference.PreferenceManager
+import com.whisperkey.ui.NumericKeyboardView
+import com.whisperkey.ui.QwertyKeyboardView
 import com.whisperkey.ui.VoiceInputView
 import com.whisperkey.util.Logger
 
 /**
  * Main input method service for WhisperKey.
  * Handles voice input and text insertion into the current input field.
+ * Manages three keyboard modes: Voice, Numeric (10-key), and QWERTY.
  */
 class WhisperKeyboardService : InputMethodService() {
 
     companion object {
         private const val TAG = "WhisperKeyboardService"
+        private const val MODE_VOICE = 0
+        private const val MODE_NUMERIC = 1
+        private const val MODE_QWERTY = 2
     }
 
+    private var viewFlipper: ViewFlipper? = null
     private var voiceInputView: VoiceInputView? = null
+    private var numericKeyboardView: NumericKeyboardView? = null
+    private var qwertyKeyboardView: QwertyKeyboardView? = null
     private var whisperEngine: WhisperEngine? = null
     private var audioRecorder: AudioRecorder? = null
     private var emojiManager: EmojiManager? = null
@@ -76,6 +87,14 @@ class WhisperKeyboardService : InputMethodService() {
     override fun onCreateInputView(): View {
         Logger.d(TAG, "onCreateInputView")
 
+        viewFlipper = ViewFlipper(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        // Voice input view (index 0)
         voiceInputView = VoiceInputView(this).apply {
             setOnRecordingListener(object : VoiceInputView.OnRecordingListener {
                 override fun onRecordingStarted() {
@@ -112,9 +131,88 @@ class WhisperKeyboardService : InputMethodService() {
                     Logger.d(TAG, "Emoji clicked: $emoji")
                     currentInputConnection?.commitText(emoji, 1)
                 }
+
+                override fun onSwitchToNumeric() {
+                    switchMode(MODE_NUMERIC)
+                }
+
+                override fun onSwitchToQwerty() {
+                    switchMode(MODE_QWERTY)
+                }
             })
         }
-        return voiceInputView!!
+
+        // Numeric keyboard view (index 1)
+        numericKeyboardView = NumericKeyboardView(this).apply {
+            setOnKeyboardActionListener(object : NumericKeyboardView.OnKeyboardActionListener {
+                override fun onTextInput(text: String) {
+                    currentInputConnection?.commitText(text, 1)
+                }
+
+                override fun onDelete() {
+                    currentInputConnection?.deleteSurroundingText(1, 0)
+                }
+
+                override fun onEnter() {
+                    currentInputConnection?.commitText("\n", 1)
+                }
+
+                override fun onSwitchToVoice() {
+                    switchMode(MODE_VOICE)
+                }
+
+                override fun onSwitchToQwerty() {
+                    switchMode(MODE_QWERTY)
+                }
+            })
+        }
+
+        // QWERTY keyboard view (index 2)
+        qwertyKeyboardView = QwertyKeyboardView(this).apply {
+            setOnKeyboardActionListener(object : QwertyKeyboardView.OnKeyboardActionListener {
+                override fun onTextInput(text: String) {
+                    currentInputConnection?.commitText(text, 1)
+                }
+
+                override fun onDelete() {
+                    currentInputConnection?.deleteSurroundingText(1, 0)
+                }
+
+                override fun onEnter() {
+                    currentInputConnection?.commitText("\n", 1)
+                }
+
+                override fun onSwitchToVoice() {
+                    switchMode(MODE_VOICE)
+                }
+            })
+        }
+
+        val wrapContent = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        viewFlipper!!.addView(voiceInputView, wrapContent)
+        viewFlipper!!.addView(numericKeyboardView, wrapContent)
+        viewFlipper!!.addView(qwertyKeyboardView, wrapContent)
+
+        return viewFlipper!!
+    }
+
+    private fun switchMode(mode: Int) {
+        Logger.d(TAG, "Switching keyboard mode to: $mode")
+
+        // Stop recording if switching away from voice mode
+        if (viewFlipper?.displayedChild == MODE_VOICE && mode != MODE_VOICE) {
+            stopRecordingIfActive()
+        }
+
+        viewFlipper?.displayedChild = mode
+    }
+
+    private fun stopRecordingIfActive() {
+        audioRecorder?.stop()
+        voiceInputView?.reset()
     }
 
     private fun openSettings() {
