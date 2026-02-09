@@ -119,7 +119,7 @@ class WhisperKeyboardService : InputMethodService() {
 
                 override fun onEnterClick() {
                     Logger.d(TAG, "Enter clicked")
-                    currentInputConnection?.commitText("\n", 1)
+                    performEnterAction()
                 }
 
                 override fun onSettingsClick() {
@@ -139,6 +139,22 @@ class WhisperKeyboardService : InputMethodService() {
                 override fun onSwitchToQwerty() {
                     switchMode(MODE_QWERTY)
                 }
+
+                override fun onCut() {
+                    performCut()
+                }
+
+                override fun onCopy() {
+                    performCopy()
+                }
+
+                override fun onPaste() {
+                    performPaste()
+                }
+
+                override fun onSelectAll() {
+                    performSelectAll()
+                }
             })
         }
 
@@ -154,7 +170,7 @@ class WhisperKeyboardService : InputMethodService() {
                 }
 
                 override fun onEnter() {
-                    currentInputConnection?.commitText("\n", 1)
+                    performEnterAction()
                 }
 
                 override fun onSwitchToVoice() {
@@ -167,7 +183,7 @@ class WhisperKeyboardService : InputMethodService() {
             })
         }
 
-        // QWERTY keyboard view (index 2)
+        // QWERTY keyboard view (index 2) - always inserts newline for multiline text entry
         qwertyKeyboardView = QwertyKeyboardView(this).apply {
             setOnKeyboardActionListener(object : QwertyKeyboardView.OnKeyboardActionListener {
                 override fun onTextInput(text: String) {
@@ -232,6 +248,10 @@ class WhisperKeyboardService : InputMethodService() {
 
         // Apply settings
         applySettings()
+
+        // Update enter button based on input field type (not QWERTY - it always uses newline)
+        voiceInputView?.updateEnterButton(info)
+        numericKeyboardView?.updateEnterButton(info)
 
         // Update UI based on model status
         if (!isModelLoaded) {
@@ -344,6 +364,41 @@ class WhisperKeyboardService : InputMethodService() {
 
     private fun runOnMainThread(action: () -> Unit) {
         voiceInputView?.post(action)
+    }
+
+    private fun performSelectAll() {
+        currentInputConnection?.performContextMenuAction(android.R.id.selectAll)
+    }
+
+    private fun performCut() {
+        currentInputConnection?.performContextMenuAction(android.R.id.cut)
+    }
+
+    private fun performCopy() {
+        currentInputConnection?.performContextMenuAction(android.R.id.copy)
+    }
+
+    private fun performPaste() {
+        currentInputConnection?.performContextMenuAction(android.R.id.paste)
+    }
+
+    private fun performEnterAction() {
+        val editorInfo = currentInputEditorInfo
+        val imeAction = editorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_UNSPECIFIED
+
+        when (imeAction) {
+            EditorInfo.IME_ACTION_GO,
+            EditorInfo.IME_ACTION_SEARCH,
+            EditorInfo.IME_ACTION_SEND,
+            EditorInfo.IME_ACTION_NEXT,
+            EditorInfo.IME_ACTION_DONE -> {
+                currentInputConnection?.performEditorAction(imeAction)
+            }
+            else -> {
+                // Default: insert newline
+                currentInputConnection?.commitText("\n", 1)
+            }
+        }
     }
 
     private fun dpToPx(dp: Int): Int {

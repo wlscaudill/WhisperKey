@@ -93,7 +93,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
             if (i == 2) {
                 shiftButton = Button(context).apply {
                     text = "\u21E7" // ⇧
-                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.5f).apply {
+                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.2f).apply {
                         marginStart = keyMargin
                         marginEnd = keyMargin
                     }
@@ -140,7 +140,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
             // Row 3: add backspace button after letter keys
             if (i == 2) {
                 val backspaceButton = ImageButton(context).apply {
-                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 2.5f).apply {
+                    layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.5f).apply {
                         marginStart = keyMargin
                         marginEnd = keyMargin
                     }
@@ -208,7 +208,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
 
         // Voice mode button
         val voiceButton = ImageButton(context).apply {
-            layoutParams = LayoutParams(0, bottomHeight, 0.8f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 1f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }
@@ -225,7 +225,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
         // Comma
         val commaButton = Button(context).apply {
             text = ","
-            layoutParams = LayoutParams(0, bottomHeight, 0.6f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 1f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }
@@ -242,7 +242,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
         // Space
         val spaceButton = Button(context).apply {
             text = context.getString(R.string.space_button)
-            layoutParams = LayoutParams(0, bottomHeight, 1.2f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 2.8f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }
@@ -260,7 +260,7 @@ class QwertyKeyboardView @JvmOverloads constructor(
         // Period
         val periodButton = Button(context).apply {
             text = "."
-            layoutParams = LayoutParams(0, bottomHeight, 0.6f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 1f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }
@@ -274,10 +274,10 @@ class QwertyKeyboardView @JvmOverloads constructor(
         }
         bottomRow.addView(periodButton)
 
-        // Enter
+        // Enter - always inserts newline on QWERTY keyboard
         val enterButton = Button(context).apply {
             text = context.getString(R.string.enter_button)
-            layoutParams = LayoutParams(0, bottomHeight, 3f).apply {
+            layoutParams = LayoutParams(0, bottomHeight, 1.5f).apply {
                 marginStart = bottomMargin
                 marginEnd = bottomMargin
             }

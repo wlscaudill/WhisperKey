@@ -9,9 +9,11 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.PopupMenu
 import android.widget.TextView
 import com.whisperkey.R
 
@@ -38,6 +40,10 @@ class VoiceInputView @JvmOverloads constructor(
         fun onEmojiClick(emoji: String)
         fun onSwitchToNumeric() {}
         fun onSwitchToQwerty() {}
+        fun onCut() {}
+        fun onCopy() {}
+        fun onPaste() {}
+        fun onSelectAll() {}
     }
 
     private var recordingListener: OnRecordingListener? = null
@@ -161,6 +167,11 @@ class VoiceInputView @JvmOverloads constructor(
 
         settingsButton.setOnClickListener {
             actionListener?.onSettingsClick()
+        }
+
+        settingsButton.setOnLongClickListener {
+            showClipboardMenu(it)
+            true
         }
 
         numericModeButton.setOnClickListener {
@@ -288,6 +299,42 @@ class VoiceInputView @JvmOverloads constructor(
         waveformView.clear()
         micButton.isEnabled = true
         micButton.isActivated = false
+    }
+
+    private fun showClipboardMenu(anchor: View) {
+        val popup = PopupMenu(context, anchor)
+        popup.menu.add(0, R.id.action_select_all, 0, R.string.clipboard_select_all)
+        popup.menu.add(0, R.id.action_cut, 1, R.string.clipboard_cut)
+        popup.menu.add(0, R.id.action_copy, 2, R.string.clipboard_copy)
+        popup.menu.add(0, R.id.action_paste, 3, R.string.clipboard_paste)
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_select_all -> actionListener?.onSelectAll()
+                R.id.action_cut -> actionListener?.onCut()
+                R.id.action_copy -> actionListener?.onCopy()
+                R.id.action_paste -> actionListener?.onPaste()
+            }
+            true
+        }
+        popup.show()
+    }
+
+    /**
+     * Updates the enter button label based on the input field's IME options.
+     * Call this from onStartInputView with the EditorInfo.
+     */
+    fun updateEnterButton(editorInfo: EditorInfo?) {
+        val imeAction = editorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_UNSPECIFIED
+        val label = when (imeAction) {
+            EditorInfo.IME_ACTION_GO -> context.getString(R.string.enter_action_go)
+            EditorInfo.IME_ACTION_SEARCH -> context.getString(R.string.enter_action_search)
+            EditorInfo.IME_ACTION_SEND -> context.getString(R.string.enter_action_send)
+            EditorInfo.IME_ACTION_NEXT -> context.getString(R.string.enter_action_next)
+            EditorInfo.IME_ACTION_DONE -> context.getString(R.string.enter_action_done)
+            else -> context.getString(R.string.enter_button)
+        }
+        enterButton.text = label
     }
 
     private fun startRecording() {

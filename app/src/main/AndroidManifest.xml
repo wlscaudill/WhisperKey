@@ -34,6 +34,20 @@
                 android:resource="@xml/method" />
         </service>
 
+        <!-- Speech Recognition Service -->
+        <service
+            android:name=".WhisperRecognitionService"
+            android:exported="true"
+            android:label="@string/ime_name"
+            android:permission="android.permission.BIND_RECOGNITION_SERVICE">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/recognition_service" />
+        </service>
+
         <!-- Settings Activity -->
         <activity
             android:name=".SettingsActivity"

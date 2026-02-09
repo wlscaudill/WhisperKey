@@ -8,6 +8,144 @@
 - [x] add space and enter/go/whatever buttons
 - [x] add button to switch to 10 key and button on that to switch back (maybe tabs)
 - [x] add button to switch to fully capable qwerty and button on that to switch back (maybe tabs)
+- [ ] keyboard needs to recognize if it does NOT have microphone permissions and prompt to fix
+- [ ] Expose Whisper engine as a system RecognitionService so other keyboards (Gboard, Samsung, etc.) can use WhisperKey for voice-to-text
+  - **Issue:** Implementation complete but WhisperKey is not appearing in Settings > Voice input picker. Needs investigation — may be a manifest issue, missing attribute, or Android version-specific behavior.
+- [x] Copy/paste does not work while in the keyboard
+  - **Fixed:** Long-press settings button shows clipboard menu (Select All, Cut, Copy, Paste)
+- [x] Enter button should change to "Go" (or appropriate action label) based on input field type — currently always shows "Enter" even when the field expects a search/go action
+  - **Fixed:** Enter button now shows Go/Search/Send/Next/Done based on EditorInfo.imeOptions, and performs the appropriate action
+
+---
+
+# Expose Whisper Engine as System RecognitionService
+
+## Goal
+Make WhisperKey appear in **Settings > Languages & input > Voice input** so users can select it as the voice-to-text provider for any keyboard, not just WhisperKey's own IME.
+
+## Background
+Android's voice input picker lists implementations of `android.speech.RecognitionService`, not IME voice subtypes. Google and Samsung register a `RecognitionService` with `BIND_RECOGNITION_SERVICE` permission. WhisperKey currently only has an `InputMethodService`. The Whisper engine runs fully on-device via whisper.cpp JNI, so no network dependency.
+
+## Implementation Plan
+
+### Step 1: Create `WhisperRecognitionService.kt`
+
+**Path:** `app/src/main/java/com/whisperkey/WhisperRecognitionService.kt`
+
+Extend `android.speech.RecognitionService` and implement its abstract methods. This service gets its own `WhisperEngine` and `AudioRecorder` instances (the model files on disk are shared, but each service loads independently — no IPC needed).
+
+**Key methods to implement:**
+- `onStartListening(intent, callback)` — Load model if needed, start `AudioRecorder`, capture audio
+- `onStopListening(callback)` — Stop recording, run `WhisperEngine.transcribe()`, return results via `callback.results()`
+- `onCancel(callback)` — Abort recording, clean up
+- `onCreate()` — Initialize `WhisperEngine`, `AudioRecorder`, `ModelManager`
+- `onDestroy()` — Release native resources
+
+**Callback flow:**
+```
+Android SpeechRecognizer → WhisperRecognitionService
+  onStartListening()
+    ├─ callback.readyForSpeech(Bundle)
+    ├─ callback.beginningOfSpeech()
+    ├─ [recording...]
+    ├─ callback.rmsChanged(float)          // waveform amplitude updates
+  onStopListening()
+    ├─ callback.endOfSpeech()
+    ├─ whisperEngine.transcribe(audioData)
+    ├─ callback.results(Bundle)            // SpeechRecognizer.RESULTS_RECOGNITION
+  onCancel()
+    └─ cleanup
+```
+
+**Result bundle format:**
+```kotlin
+val results = Bundle()
+val matches = ArrayList<String>()
+matches.add(transcribedText)
+results.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, matches)
+results.putFloatArray(SpeechRecognizer.CONFIDENCE_SCORES, floatArrayOf(1.0f))
+callback.results(results)
+```
+
+**Error handling:**
+- Model not downloaded → `callback.error(SpeechRecognizer.ERROR_SERVER)` (closest fit)
+- No audio permission → `callback.error(SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS)`
+- Recording failure → `callback.error(SpeechRecognizer.ERROR_AUDIO)`
+- Transcription failure → `callback.error(SpeechRecognizer.ERROR_NO_MATCH)`
+
+### Step 2: Register in `AndroidManifest.xml`
+
+Add the new service declaration alongside the existing IME service:
+
+```xml
+<service
+    android:name=".WhisperRecognitionService"
+    android:exported="true"
+    android:label="@string/ime_name"
+    android:permission="android.permission.BIND_RECOGNITION_SERVICE">
+    <intent-filter>
+        <action android:name="android.speech.RecognitionService" />
+    </intent-filter>
+    <meta-data
+        android:name="android.speech"
+        android:resource="@xml/recognition_service" />
+</service>
+```
+
+### Step 3: Create `res/xml/recognition_service.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<recognition-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.whisperkey.SettingsActivity" />
+```
+
+This tells Android where the user can configure the recognition service (model size, storage location, etc.) — reuses the existing `SettingsActivity`.
+
+### Step 4: Handle model lifecycle in the RecognitionService
+
+The `WhisperRecognitionService` needs to load the model on demand since it runs in a separate service lifecycle from the keyboard:
+
+```kotlin
+private fun ensureModelLoaded(): Boolean {
+    if (whisperEngine.isReady()) return true
+    val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+    val modelSize = prefs.getString("model_size", "base") ?: "base"
+    val modelPath = modelManager.getDownloadedModelPath(modelSize) ?: return false
+    val file = File(modelPath)
+    if (!file.exists() || !file.canRead()) return false
+    return whisperEngine.initialize(modelPath)
+}
+```
+
+This reuses `ModelManager` and reads the same preferences as the keyboard service, so whichever model the user has downloaded and selected works for both.
+
+### Step 5: Handle audio conflicts
+
+`AudioRecord` with `MIC` source is exclusive — only one service can record at a time. This is fine in practice because:
+- If WhisperKey IME is active and recording, no other keyboard is asking for voice input
+- If another keyboard triggers the `RecognitionService`, WhisperKey IME isn't recording
+
+No special handling needed, but `onStartListening` should catch `AudioRecord` init failures and return `ERROR_AUDIO`.
+
+## Files Summary
+
+| Action | File |
+|--------|------|
+| **Create** | `app/src/main/java/com/whisperkey/WhisperRecognitionService.kt` |
+| **Create** | `app/src/main/res/xml/recognition_service.xml` |
+| **Modify** | `app/src/main/AndroidManifest.xml` (add service declaration) |
+
+## Testing
+
+- Build and install
+- Go to **Settings > Languages & input > Voice input** — WhisperKey should appear
+- Select WhisperKey as voice input provider
+- Switch to Gboard or Samsung keyboard
+- Tap the mic button — should use WhisperKey's Whisper engine for transcription
+- Verify results appear in the text field
+- Test with no model downloaded — should get a graceful error
+- Test cancellation mid-recording
 
 ### Implementation Plan for Keyboard Tabs
 

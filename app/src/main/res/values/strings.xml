@@ -90,6 +90,11 @@
     <string name="settings_description">Settings</string>
     <string name="space_button">space</string>
     <string name="enter_button">enter</string>
+    <string name="enter_action_go">Go</string>
+    <string name="enter_action_search">Search</string>
+    <string name="enter_action_send">Send</string>
+    <string name="enter_action_next">Next</string>
+    <string name="enter_action_done">Done</string>
     <string name="space_description">Space</string>
     <string name="enter_description">Enter</string>
 
@@ -136,4 +141,10 @@
     <string name="model_info_title">Model Information</string>
     <string name="copy_to_clipboard">Copy</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>
+
+    <!-- Clipboard Actions -->
+    <string name="clipboard_select_all">Select All</string>
+    <string name="clipboard_cut">Cut</string>
+    <string name="clipboard_copy">Copy</string>
+    <string name="clipboard_paste">Paste</string>
 </resources>

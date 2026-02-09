@@ -6,6 +6,7 @@ import android.os.Looper
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -114,5 +115,21 @@ class NumericKeyboardView @JvmOverloads constructor(
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
+    }
+
+    /**
+     * Updates the enter button label based on the input field's IME options.
+     */
+    fun updateEnterButton(editorInfo: EditorInfo?) {
+        val imeAction = editorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_UNSPECIFIED
+        val label = when (imeAction) {
+            EditorInfo.IME_ACTION_GO -> context.getString(R.string.enter_action_go)
+            EditorInfo.IME_ACTION_SEARCH -> context.getString(R.string.enter_action_search)
+            EditorInfo.IME_ACTION_SEND -> context.getString(R.string.enter_action_send)
+            EditorInfo.IME_ACTION_NEXT -> context.getString(R.string.enter_action_next)
+            EditorInfo.IME_ACTION_DONE -> context.getString(R.string.enter_action_done)
+            else -> context.getString(R.string.enter_button)
+        }
+        findViewById<Button>(R.id.btn_enter).text = label
     }
 }
