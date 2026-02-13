@@ -17,7 +17,7 @@ public class HotkeyConflictDialog : Form
         ResultHotkey = conflicting;
         bool canOverride = WindowsHotkeyOverride.CanOverride(conflicting);
 
-        Text = "WhisperKeys - Hotkey Conflict";
+        Text = "WhisperKey - Hotkey Conflict";
         Size = new Size(520, canOverride ? 310 : 260);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -45,7 +45,7 @@ public class HotkeyConflictDialog : Form
         {
             var overrideBtn = new Button
             {
-                Text = $"Disable Windows' {conflicting} and use it for WhisperKeys",
+                Text = $"Disable Windows' {conflicting} and use it for WhisperKey",
                 Location = new Point(x, y),
                 Size = new Size(btnW, 40)
             };
@@ -60,7 +60,7 @@ public class HotkeyConflictDialog : Form
                     "Explorer needs to restart for the change to take effect.\n" +
                     "Restart Explorer now?\n\n" +
                     "(Your taskbar will briefly disappear and reappear.)",
-                    "WhisperKeys",
+                    "WhisperKey",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
 

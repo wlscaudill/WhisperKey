@@ -4,9 +4,9 @@ public static class Logger
 {
     private static readonly string LogDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "WhisperKeys");
+        "WhisperKey");
 
-    private static readonly string LogFile = Path.Combine(LogDir, "whisperkeys.log");
+    private static readonly string LogFile = Path.Combine(LogDir, "whisperkey.log");
     private static readonly object Lock = new();
 
     public static void Init()
@@ -19,7 +19,7 @@ public static class Logger
             File.WriteAllText(LogFile, "");
         }
 
-        Log("=== WhisperKeys started ===");
+        Log("=== WhisperKey started ===");
     }
 
     public static void Log(string message)

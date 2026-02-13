@@ -3,7 +3,8 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Debug",
     [switch]$Publish,
-    [switch]$Run
+    [switch]$Run,
+    [switch]$Restart
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,6 +12,20 @@ $root = $PSScriptRoot
 $project = "$root\WhisperKey\WhisperKey.csproj"
 
 Write-Host "=== WhisperKey Build ===" -ForegroundColor Cyan
+
+# Restart: stop running process and clean publish directory
+if ($Restart) {
+    Write-Host "`nStopping running WhisperKey process..." -ForegroundColor Yellow
+    Stop-Process -Name WhisperKey -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+
+    if (Test-Path "$root\publish") {
+        Write-Host "Cleaning publish directory..." -ForegroundColor Yellow
+        Remove-Item "$root\publish\*" -Recurse -Force
+    }
+
+    $Publish = $true
+}
 
 # Restore
 Write-Host "`nRestoring packages..." -ForegroundColor Yellow
@@ -52,5 +67,17 @@ if ($Run) {
         Start-Process $exe.FullName
     } else {
         Write-Host "`nCould not find built exe" -ForegroundColor Red
+    }
+}
+
+# Restart: relaunch from publish directory
+if ($Restart) {
+    $publishExe = "$root\publish\WhisperKey.exe"
+    if (Test-Path $publishExe) {
+        Write-Host "`nLaunching WhisperKey from publish directory..." -ForegroundColor Yellow
+        Start-Process $publishExe
+        Write-Host "WhisperKey launched!" -ForegroundColor Green
+    } else {
+        Write-Host "`nCould not find published exe at $publishExe" -ForegroundColor Red
     }
 }

@@ -4,7 +4,7 @@ using WhisperKeys.Settings;
 namespace WhisperKeys.App;
 
 /// <summary>
-/// Disables built-in Windows Win+key hotkeys via registry so WhisperKeys can claim them.
+/// Disables built-in Windows Win+key hotkeys via registry so WhisperKey can claim them.
 /// Works by writing to HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\DisabledHotkeys.
 /// Requires an Explorer restart to take effect.
 /// </summary>

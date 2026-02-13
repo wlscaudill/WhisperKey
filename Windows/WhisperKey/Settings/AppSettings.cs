@@ -9,6 +9,7 @@ public class AppSettings
     public bool RestoreClipboard { get; set; } = true;
     public int SilenceTimeoutMs { get; set; } = 1500;
     public int AudioDeviceNumber { get; set; } = -1; // -1 = system default
+    public bool StartWithWindows { get; set; } = false;
 }
 
 public class HotkeySettings

@@ -68,7 +68,7 @@ public class TrayApplication : Form
         _trayIcon = new NotifyIcon
         {
             Icon = CreateIcon(Color.Gray),
-            Text = "WhisperKeys - Loading...",
+            Text = "WhisperKey - Loading...",
             Visible = true,
             ContextMenuStrip = _contextMenu
         };
@@ -138,7 +138,7 @@ public class TrayApplication : Form
                         $"The hotkey {_settings.Hotkey} is reserved by Windows on this system " +
                         "and cannot be overridden.\n\n" +
                         "Please choose a different hotkey (e.g. Ctrl+Shift+H).",
-                        "WhisperKeys",
+                        "WhisperKey",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);
 
@@ -152,7 +152,7 @@ public class TrayApplication : Form
 
             // User cancelled — run without hotkey
             Logger.Log("User declined to change hotkey, running without hotkey");
-            _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+            _trayIcon.ShowBalloonTip(3000, "WhisperKey",
                 "Running without a hotkey. Open Settings to configure one.",
                 ToolTipIcon.Warning);
             return;
@@ -160,7 +160,7 @@ public class TrayApplication : Form
 
         // Exhausted all attempts
         Logger.Error($"Failed to register any hotkey after {maxAttempts} attempts");
-        _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+        _trayIcon.ShowBalloonTip(3000, "WhisperKey",
             "Could not register a hotkey. Open Settings to configure one.",
             ToolTipIcon.Warning);
     }
@@ -176,7 +176,7 @@ public class TrayApplication : Form
         {
             Logger.Log($"Model not found, downloading {_settings.ModelFileName}...");
             UpdateStatus($"Downloading {_settings.ModelFileName}...");
-            _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+            _trayIcon.ShowBalloonTip(3000, "WhisperKey",
                 $"Downloading model {_settings.ModelFileName}...", ToolTipIcon.Info);
 
             try
@@ -190,7 +190,7 @@ public class TrayApplication : Form
             {
                 Logger.Error("Model download failed", ex);
                 SetState(AppState.Error);
-                _trayIcon.ShowBalloonTip(5000, "WhisperKeys",
+                _trayIcon.ShowBalloonTip(5000, "WhisperKey",
                     $"Failed to download model: {ex.Message}", ToolTipIcon.Error);
                 return;
             }
@@ -202,14 +202,14 @@ public class TrayApplication : Form
             await _transcriber.LoadModelAsync(modelPath, _settings.Language);
             Logger.Log("Model loaded successfully");
             SetState(AppState.Idle);
-            _trayIcon.ShowBalloonTip(2000, "WhisperKeys",
+            _trayIcon.ShowBalloonTip(2000, "WhisperKey",
                 $"Ready! Press {_settings.Hotkey} to record.", ToolTipIcon.Info);
         }
         catch (Exception ex)
         {
             Logger.Error("Model load failed", ex);
             SetState(AppState.Error);
-            _trayIcon.ShowBalloonTip(5000, "WhisperKeys",
+            _trayIcon.ShowBalloonTip(5000, "WhisperKey",
                 $"Failed to load model: {ex.Message}", ToolTipIcon.Error);
         }
     }
@@ -273,7 +273,7 @@ public class TrayApplication : Form
         {
             Logger.Error("Recording failed to start", ex);
             SetState(AppState.Error);
-            _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+            _trayIcon.ShowBalloonTip(3000, "WhisperKey",
                 $"Recording failed: {ex.Message}", ToolTipIcon.Error);
             SetState(AppState.Idle);
         }
@@ -308,7 +308,7 @@ public class TrayApplication : Form
         catch (Exception ex)
         {
             Logger.Error("Transcription failed", ex);
-            _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+            _trayIcon.ShowBalloonTip(3000, "WhisperKey",
                 $"Transcription failed: {ex.Message}", ToolTipIcon.Error);
         }
         finally
@@ -322,13 +322,13 @@ public class TrayApplication : Form
         _state = state;
         var (icon, tooltip, status) = state switch
         {
-            AppState.Idle => (Color.LimeGreen, "WhisperKeys - Ready", "Ready"),
-            AppState.OpeningMic => (Color.Yellow, "WhisperKeys - Opening mic...", "Opening mic..."),
-            AppState.Recording => (Color.Red, "WhisperKeys - Recording...", "Recording..."),
-            AppState.Processing => (Color.Orange, "WhisperKeys - Processing...", "Processing..."),
-            AppState.Loading => (Color.Gray, "WhisperKeys - Loading...", "Loading..."),
-            AppState.Error => (Color.DarkRed, "WhisperKeys - Error", "Error"),
-            _ => (Color.Gray, "WhisperKeys", "Unknown")
+            AppState.Idle => (Color.LimeGreen, "WhisperKey - Ready", "Ready"),
+            AppState.OpeningMic => (Color.Yellow, "WhisperKey - Opening mic...", "Opening mic..."),
+            AppState.Recording => (Color.Red, "WhisperKey - Recording...", "Recording..."),
+            AppState.Processing => (Color.Orange, "WhisperKey - Processing...", "Processing..."),
+            AppState.Loading => (Color.Gray, "WhisperKey - Loading...", "Loading..."),
+            AppState.Error => (Color.DarkRed, "WhisperKey - Error", "Error"),
+            _ => (Color.Gray, "WhisperKey", "Unknown")
         };
 
         _trayIcon.Icon = CreateIcon(icon);
@@ -339,7 +339,7 @@ public class TrayApplication : Form
     private void UpdateStatus(string status)
     {
         _statusItem.Text = status;
-        _trayIcon.Text = $"WhisperKeys - {status}";
+        _trayIcon.Text = $"WhisperKey - {status}";
     }
 
     private static Icon CreateIcon(Color color)
@@ -383,7 +383,7 @@ public class TrayApplication : Form
             _hotkeyManager.Unregister();
             _trayIcon.Icon = CreateIcon(Color.Gray);
             _statusItem.Text = "Disabled";
-            _trayIcon.Text = "WhisperKeys - Disabled";
+            _trayIcon.Text = "WhisperKey - Disabled";
         }
     }
 
@@ -395,6 +395,7 @@ public class TrayApplication : Form
             var oldSettings = _settings;
             _settings = form.CurrentSettings;
             SettingsManager.Save(_settings);
+            SettingsManager.SetStartWithWindows(_settings.StartWithWindows);
 
             // Re-register hotkey if changed
             if (oldSettings.Hotkey.ToString() != _settings.Hotkey.ToString())

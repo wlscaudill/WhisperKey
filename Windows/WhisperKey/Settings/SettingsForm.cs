@@ -17,6 +17,7 @@ public class SettingsForm : Form
     private ComboBox _languageCombo = null!;
     private ComboBox _audioDeviceCombo = null!;
     private CheckBox _restoreClipboardCheck = null!;
+    private CheckBox _startWithWindowsCheck = null!;
 
     // Model tab controls
     private ComboBox _modelCombo = null!;
@@ -38,7 +39,7 @@ public class SettingsForm : Form
 
     private void InitializeUI()
     {
-        Text = "WhisperKeys Settings";
+        Text = "WhisperKey Settings";
         Size = new Size(700, 720);
         Padding = new Padding(16);
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -141,7 +142,18 @@ public class SettingsForm : Form
             Location = new Point(labelX, y),
             AutoSize = true
         };
+        y += 36;
+
         page.Controls.Add(_restoreClipboardCheck);
+
+        // Start with Windows
+        _startWithWindowsCheck = new CheckBox
+        {
+            Text = "Start with Windows",
+            Location = new Point(labelX, y),
+            AutoSize = true
+        };
+        page.Controls.Add(_startWithWindowsCheck);
 
         return page;
     }
@@ -257,6 +269,9 @@ public class SettingsForm : Form
 
         // Clipboard
         _restoreClipboardCheck.Checked = CurrentSettings.RestoreClipboard;
+
+        // Start with Windows
+        _startWithWindowsCheck.Checked = CurrentSettings.StartWithWindows;
     }
 
     private void SaveUIToSettings()
@@ -265,6 +280,7 @@ public class SettingsForm : Form
         CurrentSettings.Language = _languageCombo.SelectedIndex == 0 ? "en" : "auto";
         CurrentSettings.AudioDeviceNumber = _audioDeviceCombo.SelectedIndex - 1; // -1 = default
         CurrentSettings.RestoreClipboard = _restoreClipboardCheck.Checked;
+        CurrentSettings.StartWithWindows = _startWithWindowsCheck.Checked;
 
         if (_modelCombo.SelectedItem is string selectedModel)
         {
@@ -312,7 +328,7 @@ public class SettingsForm : Form
     {
         if (_availableModelsList.SelectedItems.Count == 0)
         {
-            MessageBox.Show("Please select a model to download.", "WhisperKeys",
+            MessageBox.Show("Please select a model to download.", "WhisperKey",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -320,7 +336,7 @@ public class SettingsForm : Form
         var modelInfo = (ModelInfo)_availableModelsList.SelectedItems[0].Tag!;
         if (modelInfo.IsDownloaded)
         {
-            MessageBox.Show("This model is already downloaded.", "WhisperKeys",
+            MessageBox.Show("This model is already downloaded.", "WhisperKey",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -351,7 +367,7 @@ public class SettingsForm : Form
         catch (Exception ex)
         {
             _downloadStatusLabel.Text = $"Download failed: {ex.Message}";
-            MessageBox.Show($"Download failed: {ex.Message}", "WhisperKeys",
+            MessageBox.Show($"Download failed: {ex.Message}", "WhisperKey",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
@@ -367,7 +383,7 @@ public class SettingsForm : Form
     {
         if (_availableModelsList.SelectedItems.Count == 0)
         {
-            MessageBox.Show("Please select a model to delete.", "WhisperKeys",
+            MessageBox.Show("Please select a model to delete.", "WhisperKey",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -375,13 +391,13 @@ public class SettingsForm : Form
         var modelInfo = (ModelInfo)_availableModelsList.SelectedItems[0].Tag!;
         if (!modelInfo.IsDownloaded)
         {
-            MessageBox.Show("This model is not downloaded.", "WhisperKeys",
+            MessageBox.Show("This model is not downloaded.", "WhisperKey",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
         var result = MessageBox.Show(
-            $"Delete {modelInfo.DisplayName}?", "WhisperKeys",
+            $"Delete {modelInfo.DisplayName}?", "WhisperKey",
             MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
         if (result == DialogResult.Yes)
@@ -415,7 +431,8 @@ public class SettingsForm : Form
             Language = source.Language,
             RestoreClipboard = source.RestoreClipboard,
             SilenceTimeoutMs = source.SilenceTimeoutMs,
-            AudioDeviceNumber = source.AudioDeviceNumber
+            AudioDeviceNumber = source.AudioDeviceNumber,
+            StartWithWindows = source.StartWithWindows
         };
     }
 

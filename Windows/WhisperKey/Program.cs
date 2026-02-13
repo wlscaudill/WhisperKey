@@ -13,13 +13,13 @@ static class Program
         Logger.Init();
 
         // Single instance check
-        const string mutexName = "WhisperKeys_SingleInstance";
+        const string mutexName = "WhisperKey_SingleInstance";
         _mutex = new Mutex(true, mutexName, out bool createdNew);
 
         if (!createdNew)
         {
             Logger.Log("Another instance already running, exiting.");
-            MessageBox.Show("WhisperKeys is already running.", "WhisperKeys",
+            MessageBox.Show("WhisperKey is already running.", "WhisperKey",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

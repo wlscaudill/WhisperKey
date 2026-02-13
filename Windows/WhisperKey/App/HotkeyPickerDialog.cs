@@ -105,7 +105,7 @@ public class HotkeyPickerDialog : Form
             if (!_winCheck.Checked && !_ctrlCheck.Checked && !_altCheck.Checked && !_shiftCheck.Checked)
             {
                 MessageBox.Show("Please select at least one modifier (Win, Ctrl, Alt, or Shift).",
-                    "WhisperKeys", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    "WhisperKey", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             SelectedHotkey = BuildHotkey();
