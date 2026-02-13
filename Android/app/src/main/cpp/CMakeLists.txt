@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Path to whisper.cpp (relative to this CMakeLists.txt location)
-# From app/src/main/cpp/ we need to go up 4 levels to project root
-set(WHISPER_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../whisper.cpp)
+# From Android/app/src/main/cpp/ we need to go up 5 levels to repo root
+set(WHISPER_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../whisper.cpp)
 
 # Verify the path exists
 if(NOT EXISTS ${WHISPER_LIB_DIR}/src/whisper.cpp)
