@@ -7,36 +7,51 @@ namespace WhisperKeys.Input;
 /// <summary>
 /// Handles sending paste commands to the active window.
 ///
-/// Approaches tried:
+/// Strategy:
+///   - Console/terminal windows and Chromium/Electron apps don't respond
+///     to WM_PASTE — use SendInput Ctrl+V instead.
+///   - Scintilla controls (Notepad++ etc.) need SCI_PASTE (msg 2179).
+///   - All other apps use WM_PASTE via SendMessage.
 ///
-/// 1. SendKeys.SendWait("^v")
-///    - Works: terminal. Fails: Notepad++
-///
-/// 2. InputSimulatorStandard NuGet - build failure, removed
-///
-/// 3. SendInput P/Invoke with Ctrl+V keystrokes
-///    - Returns 4/4 success, struct size=40 correct, foreground=Notepad++
-///    - Works: terminal. Fails: Notepad++
-///
-/// 4. WM_PASTE via SendMessage to focused control
-///    - Works: terminal. Fails: Notepad++
-///
-/// 5. Multi-strategy (current):
-///    - For Scintilla controls: SCI_PASTE (msg 2179) directly
-///    - For other controls: WM_PASTE
-///    - Fallback: SendInput Ctrl+V
-///    - Logs clipboard content and target window class for diagnostics
+/// Only one method is used per paste to avoid duplicates.
 /// </summary>
 public static class InputSender
 {
     private const uint SCI_PASTE = 2179;
+
+    /// <summary>
+    /// Window class names (exact match) that don't respond to WM_PASTE and need simulated Ctrl+V.
+    /// </summary>
+    private static readonly string[] SendInputClassNames =
+    [
+        // Console / terminal hosts
+        "ConsoleWindowClass",            // Classic cmd.exe / PowerShell console
+        "CASCADIA_HOSTING_WINDOW_CLASS", // Windows Terminal
+        "PseudoConsoleWindow",           // Pseudo-console windows
+        "mintty",                        // Git Bash (mintty)
+        "VirtualConsoleClass",           // ConEmu / Cmder
+
+        // Chromium / Electron apps (Signal, Slack, Discord, VS Code, Teams, Chrome, Edge)
+        "Chrome_WidgetWin_1",            // Standard Chromium top-level window
+        "Chrome_WidgetWin_0",            // Alternate Chromium top-level window
+    ];
+
+    /// <summary>
+    /// Window class prefixes that don't respond to WM_PASTE and need simulated Ctrl+V.
+    /// These have dynamic suffixes (e.g. GUIDs) so we match by prefix.
+    /// </summary>
+    private static readonly string[] SendInputClassPrefixes =
+    [
+        "HwndWrapper[",                  // WPF apps (Fork, Visual Studio, etc.)
+    ];
 
     public static void SendPaste()
     {
         // Log foreground window
         var hwnd = GetForegroundWindow();
         var title = GetWindowTitle(hwnd);
-        Logger.Log($"SendPaste: foreground=0x{hwnd:X} \"{title}\"");
+        var windowClass = GetWindowClassName(hwnd);
+        Logger.Log($"SendPaste: foreground=0x{hwnd:X} class=\"{windowClass}\" \"{title}\"");
 
         // Verify clipboard has content
         if (Clipboard.ContainsText())
@@ -53,31 +68,45 @@ public static class InputSender
         ReleaseModifiers();
         Thread.Sleep(30);
 
-        // Find the focused control
+        // Console/terminal and Chromium/Electron windows: use SendInput Ctrl+V (WM_PASTE doesn't work)
+        if (NeedsSendInput(windowClass))
+        {
+            Logger.Log($"SendInput target detected (class={windowClass}), sending Ctrl+V");
+            SendCtrlV();
+            return;
+        }
+
+        // Find the focused control for non-console windows
         var target = GetFocusedControl(hwnd);
         var targetClass = GetWindowClassName(target);
         Logger.Log($"Target control: 0x{target:X} class=\"{targetClass}\"");
 
-        // Check process integrity
-        GetWindowThreadProcessId(hwnd, out var targetPid);
-        Logger.Log($"Target PID: {targetPid}, Our PID: {Environment.ProcessId}");
-
-        // Strategy based on control type
+        // Scintilla controls (Notepad++ etc.): use SCI_PASTE
         if (targetClass.Contains("Scintilla", StringComparison.OrdinalIgnoreCase))
         {
             Logger.Log("Scintilla detected, sending SCI_PASTE");
             SendMessage(target, SCI_PASTE, IntPtr.Zero, IntPtr.Zero);
-        }
-        else
-        {
-            Logger.Log("Sending WM_PASTE");
-            SendMessage(target, WM_PASTE, IntPtr.Zero, IntPtr.Zero);
+            return;
         }
 
-        // Also try SendInput Ctrl+V as backup
-        Thread.Sleep(50);
-        Logger.Log("Also sending SendInput Ctrl+V");
-        SendCtrlV();
+        // All other apps: WM_PASTE
+        Logger.Log("Sending WM_PASTE");
+        SendMessage(target, WM_PASTE, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private static bool NeedsSendInput(string windowClass)
+    {
+        foreach (var name in SendInputClassNames)
+        {
+            if (windowClass.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        foreach (var prefix in SendInputClassPrefixes)
+        {
+            if (windowClass.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     private static IntPtr GetFocusedControl(IntPtr foregroundWindow)
