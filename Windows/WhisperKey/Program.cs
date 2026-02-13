@@ -33,6 +33,7 @@ static class Program
             Logger.Error("Unhandled domain exception", ex.ExceptionObject as Exception);
 
         var settings = SettingsManager.Load();
+        Logger.Level = settings.LogLevel;
         Logger.Log($"Settings loaded: model={settings.ModelFileName}, mode={settings.Mode}, hotkey={settings.Hotkey}");
 
         using var app = new TrayApplication(settings);

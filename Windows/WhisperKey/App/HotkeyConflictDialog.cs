@@ -89,7 +89,7 @@ public class HotkeyConflictDialog : Form
             using var picker = new HotkeyPickerDialog(conflicting);
             if (picker.ShowDialog() == DialogResult.OK)
             {
-                Logger.Log($"User picked new hotkey: {picker.SelectedHotkey}");
+                Logger.Debug($"User picked new hotkey: {picker.SelectedHotkey}");
                 ResultHotkey = picker.SelectedHotkey;
                 DialogResult = DialogResult.OK;
                 Close();

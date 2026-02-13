@@ -170,7 +170,7 @@ public class TrayApplication : Form
         SetState(AppState.Loading);
 
         var modelPath = _modelManager.GetModelPath(_settings.ModelFileName);
-        Logger.Log($"Model path: {modelPath}");
+        Logger.Debug($"Model path: {modelPath}");
 
         if (!_modelManager.IsModelDownloaded(_settings.ModelFileName))
         {
@@ -216,7 +216,7 @@ public class TrayApplication : Form
 
     private void OnHotkeyPressed()
     {
-        Logger.Log($"Hotkey pressed, state={_state}, enabled={_isEnabled}, mode={_settings.Mode}");
+        Logger.Debug($"Hotkey pressed, state={_state}, enabled={_isEnabled}, mode={_settings.Mode}");
         if (!_isEnabled || _state == AppState.Loading || _state == AppState.Processing)
             return;
 
@@ -237,7 +237,7 @@ public class TrayApplication : Form
             {
                 StartRecording();
                 _pttTimer.Start();
-                Logger.Log("PTT timer started, polling for key release");
+                Logger.Debug("PTT timer started, polling for key release");
             }
         }
     }
@@ -251,7 +251,7 @@ public class TrayApplication : Form
         if (!keyStillHeld)
         {
             _pttTimer.Stop();
-            Logger.Log("PTT key released");
+            Logger.Debug("PTT key released");
 
             if (_state == AppState.Recording || _state == AppState.OpeningMic)
             {
@@ -290,14 +290,14 @@ public class TrayApplication : Form
 
             if (audioData.Length == 0)
             {
-                Logger.Log("No audio data captured");
+                Logger.Debug("No audio data captured");
                 SetState(AppState.Idle);
                 return;
             }
 
             Logger.Log("Transcribing...");
             var text = await _transcriber.TranscribeAsync(audioData);
-            Logger.Log($"Transcription result: \"{text}\"");
+            Logger.Debug($"Transcription result: \"{text}\"");
 
             if (!string.IsNullOrWhiteSpace(text))
             {
@@ -396,6 +396,7 @@ public class TrayApplication : Form
             _settings = form.CurrentSettings;
             SettingsManager.Save(_settings);
             SettingsManager.SetStartWithWindows(_settings.StartWithWindows);
+            Logger.Level = _settings.LogLevel;
 
             // Re-register hotkey if changed
             if (oldSettings.Hotkey.ToString() != _settings.Hotkey.ToString())
@@ -407,7 +408,7 @@ public class TrayApplication : Form
             if (oldSettings.AudioDeviceNumber != _settings.AudioDeviceNumber)
             {
                 _audioRecorder.DeviceNumber = _settings.AudioDeviceNumber;
-                Logger.Log($"Audio device changed to {_settings.AudioDeviceNumber}");
+                Logger.Debug($"Audio device changed to {_settings.AudioDeviceNumber}");
             }
 
             // Reload model if changed

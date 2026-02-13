@@ -18,6 +18,7 @@ public class SettingsForm : Form
     private ComboBox _audioDeviceCombo = null!;
     private CheckBox _restoreClipboardCheck = null!;
     private CheckBox _startWithWindowsCheck = null!;
+    private ComboBox _logLevelCombo = null!;
 
     // Model tab controls
     private ComboBox _modelCombo = null!;
@@ -153,7 +154,21 @@ public class SettingsForm : Form
             Location = new Point(labelX, y),
             AutoSize = true
         };
+        y += 48;
+
         page.Controls.Add(_startWithWindowsCheck);
+
+        // Log level
+        page.Controls.Add(new Label { Text = "Log Level:", Location = new Point(labelX, y + 4), AutoSize = true });
+        _logLevelCombo = new ComboBox
+        {
+            Location = new Point(controlX, y),
+            Width = 240,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _logLevelCombo.Items.AddRange(new object[] { "Normal", "Debug" });
+
+        page.Controls.Add(_logLevelCombo);
 
         return page;
     }
@@ -272,6 +287,9 @@ public class SettingsForm : Form
 
         // Start with Windows
         _startWithWindowsCheck.Checked = CurrentSettings.StartWithWindows;
+
+        // Log level
+        _logLevelCombo.SelectedIndex = CurrentSettings.LogLevel == LogLevel.Normal ? 0 : 1;
     }
 
     private void SaveUIToSettings()
@@ -281,6 +299,7 @@ public class SettingsForm : Form
         CurrentSettings.AudioDeviceNumber = _audioDeviceCombo.SelectedIndex - 1; // -1 = default
         CurrentSettings.RestoreClipboard = _restoreClipboardCheck.Checked;
         CurrentSettings.StartWithWindows = _startWithWindowsCheck.Checked;
+        CurrentSettings.LogLevel = _logLevelCombo.SelectedIndex == 0 ? LogLevel.Normal : LogLevel.Debug;
 
         if (_modelCombo.SelectedItem is string selectedModel)
         {
@@ -432,7 +451,8 @@ public class SettingsForm : Form
             RestoreClipboard = source.RestoreClipboard,
             SilenceTimeoutMs = source.SilenceTimeoutMs,
             AudioDeviceNumber = source.AudioDeviceNumber,
-            StartWithWindows = source.StartWithWindows
+            StartWithWindows = source.StartWithWindows,
+            LogLevel = source.LogLevel
         };
     }
 

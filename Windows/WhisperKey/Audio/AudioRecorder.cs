@@ -55,19 +55,19 @@ public class AudioRecorder : IDisposable
             var deviceNum = _deviceNumber >= 0 ? _deviceNumber : 0;
             var deviceCount = WaveInEvent.DeviceCount;
 
-            Logger.Log($"Starting recording on device {deviceNum} (of {deviceCount} available)");
+            Logger.Debug($"Starting recording on device {deviceNum} (of {deviceCount} available)");
 
             if (deviceCount == 0)
                 throw new InvalidOperationException("No audio input devices found");
 
             if (deviceNum >= deviceCount)
             {
-                Logger.Log($"Device {deviceNum} not available, falling back to device 0");
+                Logger.Debug($"Device {deviceNum} not available, falling back to device 0");
                 deviceNum = 0;
             }
 
             var caps = WaveInEvent.GetCapabilities(deviceNum);
-            Logger.Log($"Using device: {caps.ProductName}");
+            Logger.Debug($"Using device: {caps.ProductName}");
 
             _buffer = new MemoryStream();
             _firstDataReceived = false;
@@ -126,7 +126,7 @@ public class AudioRecorder : IDisposable
             {
                 _firstDataReceived = true;
                 var elapsed = _openStopwatch?.ElapsedMilliseconds ?? 0;
-                Logger.Log($"First audio data received ({elapsed}ms after open)");
+                Logger.Debug($"First audio data received ({elapsed}ms after open)");
                 RecordingStarted?.Invoke();
             }
         }

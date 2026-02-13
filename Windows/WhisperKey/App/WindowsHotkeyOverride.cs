@@ -39,7 +39,7 @@ public static class WindowsHotkeyOverride
         if (!current.Contains(letter, StringComparison.OrdinalIgnoreCase))
         {
             key.SetValue(ValueName, current + letter, RegistryValueKind.String);
-            Logger.Log($"Added '{letter}' to DisabledHotkeys registry (was: \"{current}\")");
+            Logger.Debug($"Added '{letter}' to DisabledHotkeys registry (was: \"{current}\")");
         }
     }
 
@@ -59,7 +59,7 @@ public static class WindowsHotkeyOverride
         if (updated != current)
         {
             key.SetValue(ValueName, updated, RegistryValueKind.String);
-            Logger.Log($"Removed '{letter}' from DisabledHotkeys registry");
+            Logger.Debug($"Removed '{letter}' from DisabledHotkeys registry");
         }
     }
 
@@ -88,7 +88,7 @@ public static class WindowsHotkeyOverride
 
             // Give Explorer time to restart
             Thread.Sleep(2000);
-            Logger.Log("Explorer restarted");
+            Logger.Debug("Explorer restarted");
         }
         catch (Exception ex)
         {

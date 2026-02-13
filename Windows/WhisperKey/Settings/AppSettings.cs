@@ -10,6 +10,7 @@ public class AppSettings
     public int SilenceTimeoutMs { get; set; } = 1500;
     public int AudioDeviceNumber { get; set; } = -1; // -1 = system default
     public bool StartWithWindows { get; set; } = false;
+    public LogLevel LogLevel { get; set; } = LogLevel.Normal;
 }
 
 public class HotkeySettings
@@ -60,4 +61,10 @@ public enum RecordingMode
 {
     PushToTalk,
     Toggle
+}
+
+public enum LogLevel
+{
+    Normal,
+    Debug
 }

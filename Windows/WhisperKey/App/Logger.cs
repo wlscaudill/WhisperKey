@@ -1,3 +1,5 @@
+using WhisperKeys.Settings;
+
 namespace WhisperKeys.App;
 
 public static class Logger
@@ -8,6 +10,8 @@ public static class Logger
 
     private static readonly string LogFile = Path.Combine(LogDir, "whisperkey.log");
     private static readonly object Lock = new();
+
+    public static LogLevel Level = LogLevel.Normal;
 
     public static void Init()
     {
@@ -37,6 +41,12 @@ public static class Logger
                 // Don't throw from logging
             }
         }
+    }
+
+    public static void Debug(string message)
+    {
+        if (Level == LogLevel.Debug)
+            Log(message);
     }
 
     public static void Error(string message, Exception? ex = null)

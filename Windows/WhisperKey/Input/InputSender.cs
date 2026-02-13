@@ -51,13 +51,13 @@ public static class InputSender
         var hwnd = GetForegroundWindow();
         var title = GetWindowTitle(hwnd);
         var windowClass = GetWindowClassName(hwnd);
-        Logger.Log($"SendPaste: foreground=0x{hwnd:X} class=\"{windowClass}\" \"{title}\"");
+        Logger.Debug($"SendPaste: foreground=0x{hwnd:X} class=\"{windowClass}\" \"{title}\"");
 
         // Verify clipboard has content
         if (Clipboard.ContainsText())
         {
             var clip = Clipboard.GetText();
-            Logger.Log($"Clipboard verified: \"{clip[..Math.Min(clip.Length, 50)]}\"");
+            Logger.Debug($"Clipboard verified: \"{clip[..Math.Min(clip.Length, 50)]}\"");
         }
         else
         {
@@ -71,7 +71,7 @@ public static class InputSender
         // Console/terminal and Chromium/Electron windows: use SendInput Ctrl+V (WM_PASTE doesn't work)
         if (NeedsSendInput(windowClass))
         {
-            Logger.Log($"SendInput target detected (class={windowClass}), sending Ctrl+V");
+            Logger.Debug($"SendInput target detected (class={windowClass}), sending Ctrl+V");
             SendCtrlV();
             return;
         }
@@ -79,18 +79,18 @@ public static class InputSender
         // Find the focused control for non-console windows
         var target = GetFocusedControl(hwnd);
         var targetClass = GetWindowClassName(target);
-        Logger.Log($"Target control: 0x{target:X} class=\"{targetClass}\"");
+        Logger.Debug($"Target control: 0x{target:X} class=\"{targetClass}\"");
 
         // Scintilla controls (Notepad++ etc.): use SCI_PASTE
         if (targetClass.Contains("Scintilla", StringComparison.OrdinalIgnoreCase))
         {
-            Logger.Log("Scintilla detected, sending SCI_PASTE");
+            Logger.Debug("Scintilla detected, sending SCI_PASTE");
             SendMessage(target, SCI_PASTE, IntPtr.Zero, IntPtr.Zero);
             return;
         }
 
         // All other apps: WM_PASTE
-        Logger.Log("Sending WM_PASTE");
+        Logger.Debug("Sending WM_PASTE");
         SendMessage(target, WM_PASTE, IntPtr.Zero, IntPtr.Zero);
     }
 
@@ -119,7 +119,7 @@ public static class InputSender
 
         if (!AttachThreadInput(currentThread, foregroundThread, true))
         {
-            Logger.Log("AttachThreadInput failed, using foreground window");
+            Logger.Debug("AttachThreadInput failed, using foreground window");
             return foregroundWindow;
         }
 
@@ -150,7 +150,7 @@ public static class InputSender
 
         var size = Marshal.SizeOf<INPUT>();
         var sent = SendInput((uint)inputs.Length, inputs, size);
-        Logger.Log($"SendInput: {sent}/{inputs.Length} (size={size})");
+        Logger.Debug($"SendInput: {sent}/{inputs.Length} (size={size})");
     }
 
     private static void ReleaseModifiers()
