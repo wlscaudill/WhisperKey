@@ -122,10 +122,23 @@ public class TrayApplication : Form
                 _settings.Hotkey = conflictDlg.ResultHotkey;
                 SettingsManager.Save(_settings);
 
-                // If the user chose override (same hotkey), try once more then bail
+                // If the user chose override (same hotkey), retry a few times
+                // to give Explorer time to fully restart and release the hotkey
                 if (_settings.Hotkey.ToString() == previousHotkey)
                 {
-                    if (_hotkeyManager.Register(Handle, _settings.Hotkey))
+                    bool registered = false;
+                    for (int retry = 0; retry < 5; retry++)
+                    {
+                        if (_hotkeyManager.Register(Handle, _settings.Hotkey))
+                        {
+                            registered = true;
+                            break;
+                        }
+                        Logger.Debug($"Override retry {retry + 1}/5 failed, waiting...");
+                        Thread.Sleep(1000);
+                    }
+
+                    if (registered)
                     {
                         Logger.Log($"Hotkey registered after override: {_settings.Hotkey}");
                         return;
