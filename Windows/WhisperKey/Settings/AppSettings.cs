@@ -30,6 +30,19 @@ public class HotkeySettings
         return mods;
     }
 
+    /// <summary>
+    /// Returns modifiers without MOD_NOREPEAT for compatibility with older Windows builds.
+    /// </summary>
+    public uint GetModifiersCompat()
+    {
+        uint mods = 0;
+        if (Win) mods |= 0x0008;   // MOD_WIN
+        if (Ctrl) mods |= 0x0002;  // MOD_CONTROL
+        if (Alt) mods |= 0x0001;   // MOD_ALT
+        if (Shift) mods |= 0x0004; // MOD_SHIFT
+        return mods;
+    }
+
     public override string ToString()
     {
         var parts = new List<string>();

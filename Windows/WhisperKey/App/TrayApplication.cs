@@ -98,37 +98,71 @@ public class TrayApplication : Form
 
     private void RegisterHotkeyWithRetry()
     {
-        while (true)
+        const int maxAttempts = 5;
+        int attempt = 0;
+
+        while (attempt < maxAttempts)
         {
+            attempt++;
+
             if (_hotkeyManager.Register(Handle, _settings.Hotkey))
             {
                 Logger.Log($"Hotkey registered: {_settings.Hotkey}");
                 return;
             }
 
-            Logger.Error($"Failed to register hotkey {_settings.Hotkey}");
+            Logger.Error($"Failed to register hotkey {_settings.Hotkey} (attempt {attempt}/{maxAttempts})");
 
             using var conflictDlg = new HotkeyConflictDialog(_settings.Hotkey);
             var result = conflictDlg.ShowDialog();
 
             if (result == DialogResult.OK)
             {
-                // User chose to override
+                var previousHotkey = _settings.Hotkey.ToString();
                 _settings.Hotkey = conflictDlg.ResultHotkey;
                 SettingsManager.Save(_settings);
-                continue; // Retry registration
+
+                // If the user chose override (same hotkey), try once more then bail
+                if (_settings.Hotkey.ToString() == previousHotkey)
+                {
+                    if (_hotkeyManager.Register(Handle, _settings.Hotkey))
+                    {
+                        Logger.Log($"Hotkey registered after override: {_settings.Hotkey}");
+                        return;
+                    }
+
+                    Logger.Error($"Hotkey {_settings.Hotkey} still unavailable after override — " +
+                        "likely a system-reserved shortcut on this Windows version");
+
+                    MessageBox.Show(
+                        $"The hotkey {_settings.Hotkey} is reserved by Windows on this system " +
+                        "and cannot be overridden.\n\n" +
+                        "Please choose a different hotkey (e.g. Ctrl+Shift+H).",
+                        "WhisperKeys",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    // Fall through to show the conflict dialog again with a new attempt
+                    continue;
+                }
+
+                // User chose a different hotkey — loop will retry registration
+                continue;
             }
 
-            if (result == DialogResult.Cancel)
-            {
-                // User cancelled - run without hotkey
-                Logger.Log("User declined to change hotkey, running without hotkey");
-                _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
-                    "Running without a hotkey. Open Settings to configure one.",
-                    ToolTipIcon.Warning);
-                return;
-            }
+            // User cancelled — run without hotkey
+            Logger.Log("User declined to change hotkey, running without hotkey");
+            _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+                "Running without a hotkey. Open Settings to configure one.",
+                ToolTipIcon.Warning);
+            return;
         }
+
+        // Exhausted all attempts
+        Logger.Error($"Failed to register any hotkey after {maxAttempts} attempts");
+        _trayIcon.ShowBalloonTip(3000, "WhisperKeys",
+            "Could not register a hotkey. Open Settings to configure one.",
+            ToolTipIcon.Warning);
     }
 
     private async Task LoadModelAsync()
