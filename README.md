@@ -59,11 +59,14 @@ WhisperKey for Windows runs as a system tray application. Press a global hotkey 
 - **Configurable microphone** selection
 - **Clipboard restoration**: optionally restores your clipboard contents after pasting transcribed text
 - **Hotkey conflict resolution**: detects conflicts with Windows shortcuts and offers to override them or pick a different key
-- Requires Windows 10+ and .NET 8.0
+- Requires Windows 10+
+
+### Prerequisites
+
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (build and runtime)
+- [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) (required by the native whisper.cpp runtime)
 
 ### Building
-
-You need the [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) installed.
 
 From a PowerShell terminal in the `Windows/` directory, run:
 
