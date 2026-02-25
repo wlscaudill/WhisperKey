@@ -8,10 +8,15 @@ namespace WhisperKeys.Input;
 /// Handles sending paste commands to the active window.
 ///
 /// Strategy:
-///   - Console/terminal windows and Chromium/Electron apps don't respond
-///     to WM_PASTE — use SendInput Ctrl+V instead.
 ///   - Scintilla controls (Notepad++ etc.) need SCI_PASTE (msg 2179).
-///   - All other apps use WM_PASTE via SendMessage.
+///   - All other apps use SendInput Ctrl+V (the universal default).
+///
+/// Previously, WM_PASTE was the default fallback with SendInput reserved for a
+/// specific list of window classes (consoles, Chromium/Electron). This broke when
+/// apps like Microsoft Teams migrated from Electron (Chrome_WidgetWin_1) to WebView2,
+/// and didn't cover apps like Word whose custom editing surfaces ignore WM_PASTE.
+/// SendInput Ctrl+V works universally — it's what happens when the user physically
+/// presses Ctrl+V — so it's now the default for all non-Scintilla windows.
 ///
 /// Only one method is used per paste to avoid duplicates.
 /// </summary>
@@ -19,31 +24,37 @@ public static class InputSender
 {
     private const uint SCI_PASTE = 2179;
 
-    /// <summary>
-    /// Window class names (exact match) that don't respond to WM_PASTE and need simulated Ctrl+V.
-    /// </summary>
-    private static readonly string[] SendInputClassNames =
-    [
-        // Console / terminal hosts
-        "ConsoleWindowClass",            // Classic cmd.exe / PowerShell console
-        "CASCADIA_HOSTING_WINDOW_CLASS", // Windows Terminal
-        "PseudoConsoleWindow",           // Pseudo-console windows
-        "mintty",                        // Git Bash (mintty)
-        "VirtualConsoleClass",           // ConEmu / Cmder
+    // NOTE: These class lists were previously used by NeedsSendInput() to route specific
+    // window types to SendInput Ctrl+V, with WM_PASTE as the fallback for everything else.
+    // Since SendInput Ctrl+V is now the universal default (see SendPaste()), these lists are
+    // no longer checked at runtime. They're preserved here for reference in case a future
+    // change needs to special-case certain window classes again.
 
-        // Chromium / Electron apps (Signal, Slack, Discord, VS Code, Teams, Chrome, Edge)
-        "Chrome_WidgetWin_1",            // Standard Chromium top-level window
-        "Chrome_WidgetWin_0",            // Alternate Chromium top-level window
-    ];
+    // /// <summary>
+    // /// Window class names (exact match) that don't respond to WM_PASTE and need simulated Ctrl+V.
+    // /// </summary>
+    // private static readonly string[] SendInputClassNames =
+    // [
+    //     // Console / terminal hosts
+    //     "ConsoleWindowClass",            // Classic cmd.exe / PowerShell console
+    //     "CASCADIA_HOSTING_WINDOW_CLASS", // Windows Terminal
+    //     "PseudoConsoleWindow",           // Pseudo-console windows
+    //     "mintty",                        // Git Bash (mintty)
+    //     "VirtualConsoleClass",           // ConEmu / Cmder
+    //
+    //     // Chromium / Electron apps (Signal, Slack, Discord, VS Code, Teams, Chrome, Edge)
+    //     "Chrome_WidgetWin_1",            // Standard Chromium top-level window
+    //     "Chrome_WidgetWin_0",            // Alternate Chromium top-level window
+    // ];
 
-    /// <summary>
-    /// Window class prefixes that don't respond to WM_PASTE and need simulated Ctrl+V.
-    /// These have dynamic suffixes (e.g. GUIDs) so we match by prefix.
-    /// </summary>
-    private static readonly string[] SendInputClassPrefixes =
-    [
-        "HwndWrapper[",                  // WPF apps (Fork, Visual Studio, etc.)
-    ];
+    // /// <summary>
+    // /// Window class prefixes that don't respond to WM_PASTE and need simulated Ctrl+V.
+    // /// These have dynamic suffixes (e.g. GUIDs) so we match by prefix.
+    // /// </summary>
+    // private static readonly string[] SendInputClassPrefixes =
+    // [
+    //     "HwndWrapper[",                  // WPF apps (Fork, Visual Studio, etc.)
+    // ];
 
     public static void SendPaste()
     {
@@ -68,20 +79,11 @@ public static class InputSender
         ReleaseModifiers();
         Thread.Sleep(30);
 
-        // Console/terminal and Chromium/Electron windows: use SendInput Ctrl+V (WM_PASTE doesn't work)
-        if (NeedsSendInput(windowClass))
-        {
-            Logger.Debug($"SendInput target detected (class={windowClass}), sending Ctrl+V");
-            SendCtrlV();
-            return;
-        }
-
-        // Find the focused control for non-console windows
+        // Check for Scintilla controls (Notepad++ etc.) which need SCI_PASTE
         var target = GetFocusedControl(hwnd);
         var targetClass = GetWindowClassName(target);
         Logger.Debug($"Target control: 0x{target:X} class=\"{targetClass}\"");
 
-        // Scintilla controls (Notepad++ etc.): use SCI_PASTE
         if (targetClass.Contains("Scintilla", StringComparison.OrdinalIgnoreCase))
         {
             Logger.Debug("Scintilla detected, sending SCI_PASTE");
@@ -89,25 +91,38 @@ public static class InputSender
             return;
         }
 
-        // All other apps: WM_PASTE
-        Logger.Debug("Sending WM_PASTE");
-        SendMessage(target, WM_PASTE, IntPtr.Zero, IntPtr.Zero);
+        // Default: SendInput Ctrl+V — works universally across Chromium, WebView2, WPF,
+        // UWP/WinUI, Office, terminals, and standard Win32 controls.
+        Logger.Debug($"Sending Ctrl+V via SendInput (class={windowClass})");
+        SendCtrlV();
+
+        // NOTE: WM_PASTE was previously used here as the default fallback for any window
+        // class not in the SendInput lists. It only works on standard Win32 Edit/RichEdit
+        // controls and fails silently on custom surfaces (Word's _WwG, WebView2, WPF, etc.).
+        // Kept below for reference if a future control is found that needs direct WM_PASTE:
+        //
+        // Logger.Debug("Sending WM_PASTE");
+        // SendMessage(target, WM_PASTE, IntPtr.Zero, IntPtr.Zero);
     }
 
-    private static bool NeedsSendInput(string windowClass)
-    {
-        foreach (var name in SendInputClassNames)
-        {
-            if (windowClass.Equals(name, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        foreach (var prefix in SendInputClassPrefixes)
-        {
-            if (windowClass.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
-    }
+    // NOTE: NeedsSendInput() was previously called in SendPaste() to check the foreground
+    // window class against SendInputClassNames/SendInputClassPrefixes. No longer used since
+    // SendInput Ctrl+V is now the default for all non-Scintilla windows.
+    //
+    // private static bool NeedsSendInput(string windowClass)
+    // {
+    //     foreach (var name in SendInputClassNames)
+    //     {
+    //         if (windowClass.Equals(name, StringComparison.OrdinalIgnoreCase))
+    //             return true;
+    //     }
+    //     foreach (var prefix in SendInputClassPrefixes)
+    //     {
+    //         if (windowClass.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+    //             return true;
+    //     }
+    //     return false;
+    // }
 
     private static IntPtr GetFocusedControl(IntPtr foregroundWindow)
     {
