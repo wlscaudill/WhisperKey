@@ -11,6 +11,9 @@ public class AppSettings
     public int AudioDeviceNumber { get; set; } = -1; // -1 = system default
     public bool StartWithWindows { get; set; } = false;
     public LogLevel LogLevel { get; set; } = LogLevel.Normal;
+    public ComputeBackend ComputeBackend { get; set; } = ComputeBackend.Auto;
+    public int ThreadCount { get; set; } = 0;          // 0 = auto (let Whisper.net decide)
+    public bool GreedyDecoding { get; set; } = false;   // false = beam search (default)
 }
 
 public class HotkeySettings
@@ -67,4 +70,12 @@ public enum LogLevel
 {
     Normal,
     Debug
+}
+
+public enum ComputeBackend
+{
+    Auto,    // Whisper.net picks best: CUDA > Vulkan > CPU
+    Cpu,     // Force CPU only
+    Cuda,    // Prefer NVIDIA CUDA
+    Vulkan   // Prefer Vulkan (AMD/NVIDIA/Intel)
 }

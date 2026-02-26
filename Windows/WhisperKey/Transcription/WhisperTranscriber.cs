@@ -14,7 +14,8 @@ public class WhisperTranscriber : IDisposable
 
     public event Action<string>? StatusChanged;
 
-    public async Task LoadModelAsync(string modelPath, string language = "en")
+    public async Task LoadModelAsync(string modelPath, string language = "en",
+        int threadCount = 0, bool greedyDecoding = false)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -30,11 +31,21 @@ public class WhisperTranscriber : IDisposable
 
             StatusChanged?.Invoke("Loading model...");
 
-            _factory = WhisperFactory.FromPath(modelPath);
+            var factoryOptions = new WhisperFactoryOptions { UseGpu = true };
+            _factory = WhisperFactory.FromPath(modelPath, factoryOptions);
 
-            _processor = _factory.CreateBuilder()
-                .WithLanguage(language)
-                .Build();
+            WhisperRuntimeSetup.LogLoadedRuntime();
+
+            var builder = _factory.CreateBuilder()
+                .WithLanguage(language);
+
+            if (threadCount > 0)
+                builder.WithThreads(threadCount);
+
+            if (greedyDecoding)
+                builder.WithGreedySamplingStrategy();
+
+            _processor = builder.Build();
 
             _isLoaded = true;
             StatusChanged?.Invoke("Model loaded");

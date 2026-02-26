@@ -212,7 +212,8 @@ public class TrayApplication : Form
         try
         {
             Logger.Log("Loading whisper model...");
-            await _transcriber.LoadModelAsync(modelPath, _settings.Language);
+            await _transcriber.LoadModelAsync(modelPath, _settings.Language,
+                _settings.ThreadCount, _settings.GreedyDecoding);
             Logger.Log("Model loaded successfully");
             SetState(AppState.Idle);
             _trayIcon.ShowBalloonTip(2000, "WhisperKey",
@@ -424,9 +425,19 @@ public class TrayApplication : Form
                 Logger.Debug($"Audio device changed to {_settings.AudioDeviceNumber}");
             }
 
+            // Compute backend requires full restart
+            if (oldSettings.ComputeBackend != _settings.ComputeBackend)
+            {
+                _trayIcon.ShowBalloonTip(5000, "WhisperKey",
+                    "Compute backend changed. Please restart WhisperKey for this to take effect.",
+                    ToolTipIcon.Warning);
+            }
+
             // Reload model if changed
             if (oldSettings.ModelFileName != _settings.ModelFileName ||
-                oldSettings.Language != _settings.Language)
+                oldSettings.Language != _settings.Language ||
+                oldSettings.ThreadCount != _settings.ThreadCount ||
+                oldSettings.GreedyDecoding != _settings.GreedyDecoding)
             {
                 _ = LoadModelAsync();
             }

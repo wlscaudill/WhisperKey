@@ -1,5 +1,6 @@
 using WhisperKeys.App;
 using WhisperKeys.Settings;
+using WhisperKeys.Transcription;
 
 namespace WhisperKeys;
 
@@ -34,6 +35,7 @@ static class Program
 
         var settings = SettingsManager.Load();
         Logger.Level = settings.LogLevel;
+        WhisperRuntimeSetup.Configure(settings.ComputeBackend);
         Logger.Log($"Settings loaded: model={settings.ModelFileName}, mode={settings.Mode}, hotkey={settings.Hotkey}");
 
         using var app = new TrayApplication(settings);

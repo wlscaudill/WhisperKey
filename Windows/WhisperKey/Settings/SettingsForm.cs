@@ -19,6 +19,9 @@ public class SettingsForm : Form
     private CheckBox _restoreClipboardCheck = null!;
     private CheckBox _startWithWindowsCheck = null!;
     private ComboBox _logLevelCombo = null!;
+    private ComboBox _computeBackendCombo = null!;
+    private NumericUpDown _threadCountUpDown = null!;
+    private CheckBox _greedyDecodingCheck = null!;
 
     // Model tab controls
     private ComboBox _modelCombo = null!;
@@ -167,8 +170,66 @@ public class SettingsForm : Form
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         _logLevelCombo.Items.AddRange(new object[] { "Normal", "Debug" });
+        y += 48;
 
         page.Controls.Add(_logLevelCombo);
+
+        // Compute backend
+        page.Controls.Add(new Label { Text = "Compute Backend:", Location = new Point(labelX, y + 4), AutoSize = true });
+        _computeBackendCombo = new ComboBox
+        {
+            Location = new Point(controlX, y),
+            Width = 240,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _computeBackendCombo.Items.AddRange(new object[] { "Auto", "CPU", "CUDA (NVIDIA)", "Vulkan (AMD/Intel)" });
+        y += 28;
+
+        page.Controls.Add(_computeBackendCombo);
+
+        page.Controls.Add(new Label
+        {
+            Text = "Changes to compute backend require an app restart.",
+            Location = new Point(controlX, y),
+            AutoSize = true,
+            ForeColor = Color.Gray,
+            Font = new Font(Font.FontFamily, 7.5f)
+        });
+        y += 32;
+
+        // Thread count
+        page.Controls.Add(new Label { Text = "Thread Count:", Location = new Point(labelX, y + 4), AutoSize = true });
+        _threadCountUpDown = new NumericUpDown
+        {
+            Location = new Point(controlX, y),
+            Width = 100,
+            Minimum = 0,
+            Maximum = 32,
+            Value = 0
+        };
+        y += 28;
+
+        page.Controls.Add(_threadCountUpDown);
+
+        page.Controls.Add(new Label
+        {
+            Text = "0 = auto (let Whisper.net decide)",
+            Location = new Point(controlX, y),
+            AutoSize = true,
+            ForeColor = Color.Gray,
+            Font = new Font(Font.FontFamily, 7.5f)
+        });
+        y += 32;
+
+        // Greedy decoding
+        _greedyDecodingCheck = new CheckBox
+        {
+            Text = "Use greedy decoding (faster, slightly less accurate)",
+            Location = new Point(labelX, y),
+            AutoSize = true
+        };
+
+        page.Controls.Add(_greedyDecodingCheck);
 
         return page;
     }
@@ -290,6 +351,22 @@ public class SettingsForm : Form
 
         // Log level
         _logLevelCombo.SelectedIndex = CurrentSettings.LogLevel == LogLevel.Normal ? 0 : 1;
+
+        // Compute backend
+        _computeBackendCombo.SelectedIndex = CurrentSettings.ComputeBackend switch
+        {
+            ComputeBackend.Auto => 0,
+            ComputeBackend.Cpu => 1,
+            ComputeBackend.Cuda => 2,
+            ComputeBackend.Vulkan => 3,
+            _ => 0
+        };
+
+        // Thread count
+        _threadCountUpDown.Value = Math.Clamp(CurrentSettings.ThreadCount, 0, 32);
+
+        // Greedy decoding
+        _greedyDecodingCheck.Checked = CurrentSettings.GreedyDecoding;
     }
 
     private void SaveUIToSettings()
@@ -300,6 +377,21 @@ public class SettingsForm : Form
         CurrentSettings.RestoreClipboard = _restoreClipboardCheck.Checked;
         CurrentSettings.StartWithWindows = _startWithWindowsCheck.Checked;
         CurrentSettings.LogLevel = _logLevelCombo.SelectedIndex == 0 ? LogLevel.Normal : LogLevel.Debug;
+
+        // Compute backend
+        CurrentSettings.ComputeBackend = _computeBackendCombo.SelectedIndex switch
+        {
+            1 => ComputeBackend.Cpu,
+            2 => ComputeBackend.Cuda,
+            3 => ComputeBackend.Vulkan,
+            _ => ComputeBackend.Auto
+        };
+
+        // Thread count
+        CurrentSettings.ThreadCount = (int)_threadCountUpDown.Value;
+
+        // Greedy decoding
+        CurrentSettings.GreedyDecoding = _greedyDecodingCheck.Checked;
 
         if (_modelCombo.SelectedItem is string selectedModel)
         {
@@ -452,7 +544,10 @@ public class SettingsForm : Form
             SilenceTimeoutMs = source.SilenceTimeoutMs,
             AudioDeviceNumber = source.AudioDeviceNumber,
             StartWithWindows = source.StartWithWindows,
-            LogLevel = source.LogLevel
+            LogLevel = source.LogLevel,
+            ComputeBackend = source.ComputeBackend,
+            ThreadCount = source.ThreadCount,
+            GreedyDecoding = source.GreedyDecoding
         };
     }
 
