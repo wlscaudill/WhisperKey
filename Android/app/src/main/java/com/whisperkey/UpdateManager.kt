@@ -165,7 +165,7 @@ class UpdateManager(private val context: Context) {
 
                         FileOutputStream(apkFile).use { output ->
                             val buffer = ByteArray(8192)
-                            var bytesRead: Int
+                            var bytesRead: Int = 0
                             var totalBytesRead = 0L
 
                             body.byteStream().use { input ->

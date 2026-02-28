@@ -90,7 +90,9 @@ if ($Release) {
     Write-Host "`nCreating GitHub release: $Tag" -ForegroundColor Yellow
 
     # Check if release already exists
-    $existing = gh release view $Tag 2>&1
+    $ErrorActionPreference = "Continue"
+    gh release view $Tag 2>$null | Out-Null
+    $ErrorActionPreference = "Stop"
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Release $Tag already exists. Uploading APK to existing release..." -ForegroundColor Yellow
         gh release upload $Tag $apk.FullName --clobber
