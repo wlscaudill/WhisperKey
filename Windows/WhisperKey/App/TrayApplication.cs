@@ -31,6 +31,7 @@ public class TrayApplication : Form
     private readonly WhisperTranscriber _transcriber;
     private readonly TextInjector _textInjector;
     private readonly ModelManager _modelManager;
+    private readonly UpdateChecker _updateChecker;
     private readonly System.Windows.Forms.Timer _pttTimer;
     private AppSettings _settings;
 
@@ -44,6 +45,7 @@ public class TrayApplication : Form
         _audioRecorder = new AudioRecorder { DeviceNumber = settings.AudioDeviceNumber };
         _transcriber = new WhisperTranscriber();
         _modelManager = new ModelManager();
+        _updateChecker = new UpdateChecker();
         _textInjector = new TextInjector(_settings);
 
         // Make form invisible
@@ -61,6 +63,7 @@ public class TrayApplication : Form
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add(_enabledItem);
         _contextMenu.Items.Add("Settings...", null, OnSettingsClick);
+        _contextMenu.Items.Add("Check for Updates", null, OnCheckForUpdatesClick);
         _contextMenu.Items.Add(new ToolStripSeparator());
         _contextMenu.Items.Add("Exit", null, OnExitClick);
 
@@ -94,6 +97,12 @@ public class TrayApplication : Form
 
         // Load model async
         _ = LoadModelAsync();
+
+        // Check for updates on startup (if enabled)
+        if (_settings.CheckForUpdatesOnStartup)
+        {
+            _ = CheckForUpdatesAsync(silent: true);
+        }
     }
 
     private void RegisterHotkeyWithRetry()
@@ -440,6 +449,59 @@ public class TrayApplication : Form
                 oldSettings.GreedyDecoding != _settings.GreedyDecoding)
             {
                 _ = LoadModelAsync();
+            }
+        }
+    }
+
+    private async void OnCheckForUpdatesClick(object? sender, EventArgs e)
+    {
+        await CheckForUpdatesAsync(silent: false);
+    }
+
+    private async Task CheckForUpdatesAsync(bool silent)
+    {
+        try
+        {
+            Logger.Debug("Checking for updates...");
+            var release = await _updateChecker.CheckForUpdateAsync();
+
+            if (release == null)
+            {
+                if (!silent)
+                {
+                    MessageBox.Show("You are running the latest version.", "WhisperKey",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                return;
+            }
+
+            Logger.Log($"Update available: {release.Version}");
+
+            var message = $"Version {release.Version} is available.\n\nWould you like to open the download page?";
+            if (!string.IsNullOrEmpty(release.ReleaseNotes))
+            {
+                message = $"Version {release.Version} is available.\n\n{release.ReleaseNotes}\n\nWould you like to open the download page?";
+            }
+
+            var result = MessageBox.Show(message, "Update Available",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+
+            if (result == DialogResult.Yes && !string.IsNullOrEmpty(release.HtmlUrl))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = release.HtmlUrl,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Update check failed", ex);
+            if (!silent)
+            {
+                MessageBox.Show("Could not check for updates. Check your internet connection.", "WhisperKey",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

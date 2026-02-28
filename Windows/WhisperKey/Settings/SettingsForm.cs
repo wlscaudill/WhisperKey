@@ -22,6 +22,7 @@ public class SettingsForm : Form
     private ComboBox _computeBackendCombo = null!;
     private NumericUpDown _threadCountUpDown = null!;
     private CheckBox _greedyDecodingCheck = null!;
+    private CheckBox _checkForUpdatesCheck = null!;
 
     // Model tab controls
     private ComboBox _modelCombo = null!;
@@ -44,7 +45,7 @@ public class SettingsForm : Form
     private void InitializeUI()
     {
         Text = "WhisperKey Settings";
-        Size = new Size(700, 720);
+        Size = new Size(800, 960);
         Padding = new Padding(16);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -64,12 +65,12 @@ public class SettingsForm : Form
         {
             Dock = DockStyle.Bottom,
             FlowDirection = FlowDirection.RightToLeft,
-            Height = 60,
-            Padding = new Padding(16, 12, 16, 12)
+            Height = 76,
+            Padding = new Padding(16, 18, 16, 18)
         };
 
-        var cancelBtn = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 120, Height = 32 };
-        var okBtn = new Button { Text = "OK", Width = 120, Height = 32 };
+        var cancelBtn = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 120, Height = 40 };
+        var okBtn = new Button { Text = "OK", Width = 120, Height = 40 };
         okBtn.Click += OnOkClick;
 
         buttonPanel.Controls.Add(cancelBtn);
@@ -88,17 +89,20 @@ public class SettingsForm : Form
 
         int y = 24;
         int labelX = 24;
-        int controlX = 160;
-        int controlW = 460;
+        int controlX = 280;
+        int controlW = 440;
+        int rowSpacing = 48;      // between label+control rows
+        int checkboxSpacing = 40; // between checkbox rows
+        int sectionGap = 52;      // between logical sections
 
         // Recording mode
         page.Controls.Add(new Label { Text = "Recording Mode:", Location = new Point(labelX, y), AutoSize = true });
-        y += 32;
+        y += 30;
 
         _toggleMode = new RadioButton { Text = "Toggle (press to start, press to stop)", Location = new Point(labelX + 20, y), AutoSize = true };
-        y += 34;
+        y += 32;
         _pushToTalkMode = new RadioButton { Text = "Push-to-Talk (hold to record, release to stop)", Location = new Point(labelX + 20, y), AutoSize = true };
-        y += 48;
+        y += sectionGap;
 
         page.Controls.Add(_toggleMode);
         page.Controls.Add(_pushToTalkMode);
@@ -106,9 +110,9 @@ public class SettingsForm : Form
         // Hotkey
         page.Controls.Add(new Label { Text = "Hotkey:", Location = new Point(labelX, y + 4), AutoSize = true });
         _hotkeyDisplay = new TextBox { Location = new Point(controlX, y), Width = 240, Height = 28, ReadOnly = true };
-        _changeHotkeyBtn = new Button { Text = "Change...", Location = new Point(controlX + 252, y - 1), Width = 120, Height = 30 };
+        _changeHotkeyBtn = new Button { Text = "Change...", Location = new Point(controlX + 252, y - 1), Width = 120, Height = 40 };
         _changeHotkeyBtn.Click += OnChangeHotkeyClick;
-        y += 48;
+        y += rowSpacing;
 
         page.Controls.Add(_hotkeyDisplay);
         page.Controls.Add(_changeHotkeyBtn);
@@ -122,7 +126,7 @@ public class SettingsForm : Form
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         _languageCombo.Items.AddRange(new object[] { "English", "Auto-detect" });
-        y += 48;
+        y += rowSpacing;
 
         page.Controls.Add(_languageCombo);
 
@@ -135,7 +139,7 @@ public class SettingsForm : Form
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         PopulateAudioDevices();
-        y += 48;
+        y += sectionGap;
 
         page.Controls.Add(_audioDeviceCombo);
 
@@ -146,7 +150,7 @@ public class SettingsForm : Form
             Location = new Point(labelX, y),
             AutoSize = true
         };
-        y += 36;
+        y += checkboxSpacing;
 
         page.Controls.Add(_restoreClipboardCheck);
 
@@ -157,9 +161,20 @@ public class SettingsForm : Form
             Location = new Point(labelX, y),
             AutoSize = true
         };
-        y += 48;
+        y += checkboxSpacing;
 
         page.Controls.Add(_startWithWindowsCheck);
+
+        // Check for updates
+        _checkForUpdatesCheck = new CheckBox
+        {
+            Text = "Check for updates on startup",
+            Location = new Point(labelX, y),
+            AutoSize = true
+        };
+        y += sectionGap;
+
+        page.Controls.Add(_checkForUpdatesCheck);
 
         // Log level
         page.Controls.Add(new Label { Text = "Log Level:", Location = new Point(labelX, y + 4), AutoSize = true });
@@ -170,7 +185,7 @@ public class SettingsForm : Form
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         _logLevelCombo.Items.AddRange(new object[] { "Normal", "Debug" });
-        y += 48;
+        y += rowSpacing;
 
         page.Controls.Add(_logLevelCombo);
 
@@ -190,12 +205,12 @@ public class SettingsForm : Form
         page.Controls.Add(new Label
         {
             Text = "Changes to compute backend require an app restart.",
-            Location = new Point(controlX, y),
+            Location = new Point(labelX + 20, y),
             AutoSize = true,
             ForeColor = Color.Gray,
             Font = new Font(Font.FontFamily, 7.5f)
         });
-        y += 32;
+        y += sectionGap;
 
         // Thread count
         page.Controls.Add(new Label { Text = "Thread Count:", Location = new Point(labelX, y + 4), AutoSize = true });
@@ -214,12 +229,12 @@ public class SettingsForm : Form
         page.Controls.Add(new Label
         {
             Text = "0 = auto (let Whisper.net decide)",
-            Location = new Point(controlX, y),
+            Location = new Point(labelX + 20, y),
             AutoSize = true,
             ForeColor = Color.Gray,
             Font = new Font(Font.FontFamily, 7.5f)
         });
-        y += 32;
+        y += sectionGap;
 
         // Greedy decoding
         _greedyDecodingCheck = new CheckBox
@@ -240,8 +255,8 @@ public class SettingsForm : Form
 
         int y = 24;
         int labelX = 24;
-        int controlX = 160;
-        int fullW = 580;
+        int controlX = 200;
+        int fullW = 660;
 
         // Current model
         page.Controls.Add(new Label { Text = "Active Model:", Location = new Point(labelX, y + 4), AutoSize = true });
@@ -251,37 +266,37 @@ public class SettingsForm : Form
             Width = fullW - controlX + labelX,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        y += 48;
+        y += 52;
 
         page.Controls.Add(_modelCombo);
 
         // Available models list
         page.Controls.Add(new Label { Text = "Available Models:", Location = new Point(labelX, y), AutoSize = true });
-        y += 28;
+        y += 32;
 
         _availableModelsList = new ListView
         {
             Location = new Point(labelX, y),
-            Size = new Size(fullW, 250),
+            Size = new Size(fullW, 300),
             View = View.Details,
             FullRowSelect = true,
             MultiSelect = false
         };
         _availableModelsList.Columns.Add("Model", 260);
         _availableModelsList.Columns.Add("Size", 120);
-        _availableModelsList.Columns.Add("Status", 170);
-        y += 262;
+        _availableModelsList.Columns.Add("Status", 240);
+        y += 312;
 
         page.Controls.Add(_availableModelsList);
 
         // Download/Delete buttons
         int btnW = (fullW - 16) / 2;
-        _downloadBtn = new Button { Text = "Download Selected", Location = new Point(labelX, y), Width = btnW, Height = 34 };
+        _downloadBtn = new Button { Text = "Download Selected", Location = new Point(labelX, y), Width = btnW, Height = 40 };
         _downloadBtn.Click += OnDownloadClick;
 
-        _deleteBtn = new Button { Text = "Delete Selected", Location = new Point(labelX + btnW + 16, y), Width = btnW, Height = 34 };
+        _deleteBtn = new Button { Text = "Delete Selected", Location = new Point(labelX + btnW + 16, y), Width = btnW, Height = 40 };
         _deleteBtn.Click += OnDeleteClick;
-        y += 46;
+        y += 52;
 
         page.Controls.Add(_downloadBtn);
         page.Controls.Add(_deleteBtn);
@@ -367,6 +382,9 @@ public class SettingsForm : Form
 
         // Greedy decoding
         _greedyDecodingCheck.Checked = CurrentSettings.GreedyDecoding;
+
+        // Check for updates
+        _checkForUpdatesCheck.Checked = CurrentSettings.CheckForUpdatesOnStartup;
     }
 
     private void SaveUIToSettings()
@@ -392,6 +410,9 @@ public class SettingsForm : Form
 
         // Greedy decoding
         CurrentSettings.GreedyDecoding = _greedyDecodingCheck.Checked;
+
+        // Check for updates
+        CurrentSettings.CheckForUpdatesOnStartup = _checkForUpdatesCheck.Checked;
 
         if (_modelCombo.SelectedItem is string selectedModel)
         {
@@ -547,7 +568,8 @@ public class SettingsForm : Form
             LogLevel = source.LogLevel,
             ComputeBackend = source.ComputeBackend,
             ThreadCount = source.ThreadCount,
-            GreedyDecoding = source.GreedyDecoding
+            GreedyDecoding = source.GreedyDecoding,
+            CheckForUpdatesOnStartup = source.CheckForUpdatesOnStartup
         };
     }
 

@@ -14,6 +14,7 @@ public class AppSettings
     public ComputeBackend ComputeBackend { get; set; } = ComputeBackend.Auto;
     public int ThreadCount { get; set; } = 0;          // 0 = auto (let Whisper.net decide)
     public bool GreedyDecoding { get; set; } = false;   // false = beam search (default)
+    public bool CheckForUpdatesOnStartup { get; set; } = true;
 }
 
 public class HotkeySettings
