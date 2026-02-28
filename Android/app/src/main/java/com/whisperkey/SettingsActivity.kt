@@ -45,11 +45,13 @@ class SettingsActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
 
         private lateinit var modelManager: ModelManager
+        private lateinit var updateManager: UpdateManager
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.preferences, rootKey)
 
             modelManager = ModelManager(requireContext())
+            updateManager = UpdateManager(requireContext())
 
             setupModelPreferences()
             setupStoragePreferences()
@@ -287,9 +289,95 @@ class SettingsActivity : AppCompatActivity() {
                 "Unknown"
             }
 
+            findPreference<Preference>("check_for_updates")?.setOnPreferenceClickListener {
+                checkForUpdates()
+                true
+            }
+
             findPreference<Preference>("open_source_licenses")?.setOnPreferenceClickListener {
                 showLicenses()
                 true
+            }
+        }
+
+        private fun checkForUpdates() {
+            val pref = findPreference<Preference>("check_for_updates") ?: return
+            pref.isEnabled = false
+            pref.summary = getString(R.string.update_checking)
+
+            updateManager.checkForUpdate { state ->
+                when (state) {
+                    is UpdateManager.UpdateState.UpdateAvailable -> {
+                        pref.summary = getString(R.string.pref_check_updates_summary)
+                        pref.isEnabled = true
+                        showUpdateDialog(state.release)
+                    }
+                    is UpdateManager.UpdateState.UpToDate -> {
+                        pref.summary = getString(R.string.pref_check_updates_summary)
+                        pref.isEnabled = true
+                        Toast.makeText(requireContext(), R.string.update_up_to_date, Toast.LENGTH_SHORT).show()
+                    }
+                    is UpdateManager.UpdateState.Error -> {
+                        pref.summary = getString(R.string.pref_check_updates_summary)
+                        pref.isEnabled = true
+                        Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
+                    }
+                    else -> {
+                        pref.summary = getString(R.string.pref_check_updates_summary)
+                        pref.isEnabled = true
+                    }
+                }
+            }
+        }
+
+        private fun showUpdateDialog(release: UpdateManager.ReleaseInfo) {
+            val message = buildString {
+                append("Version ${release.version} is available.")
+                if (release.releaseNotes.isNotEmpty()) {
+                    append("\n\n")
+                    append(release.releaseNotes)
+                }
+            }
+
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.update_available_title)
+                .setMessage(message)
+                .setPositiveButton(R.string.update_download_install) { _, _ ->
+                    downloadAndInstallUpdate(release)
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+
+        private fun downloadAndInstallUpdate(release: UpdateManager.ReleaseInfo) {
+            val pref = findPreference<Preference>("check_for_updates")
+            pref?.isEnabled = false
+            pref?.summary = getString(R.string.update_downloading)
+
+            updateManager.downloadApk(release.apkUrl) { state ->
+                when (state) {
+                    is UpdateManager.UpdateState.Downloading -> {
+                        val percent = (state.progress * 100).toInt()
+                        pref?.summary = "${getString(R.string.update_downloading)} $percent%"
+                    }
+                    is UpdateManager.UpdateState.ReadyToInstall -> {
+                        pref?.summary = getString(R.string.pref_check_updates_summary)
+                        pref?.isEnabled = true
+                        try {
+                            val intent = updateManager.getInstallIntent(state.apkFile)
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            Logger.e("Settings", "Failed to launch installer: ${e.message}", e)
+                            Toast.makeText(requireContext(), R.string.update_install_failed, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    is UpdateManager.UpdateState.Error -> {
+                        pref?.summary = getString(R.string.pref_check_updates_summary)
+                        pref?.isEnabled = true
+                        Toast.makeText(requireContext(), R.string.update_download_failed, Toast.LENGTH_LONG).show()
+                    }
+                    else -> {}
+                }
             }
         }
 

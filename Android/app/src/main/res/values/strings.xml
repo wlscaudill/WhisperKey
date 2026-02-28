@@ -52,8 +52,21 @@
 
     <!-- About Preferences -->
     <string name="pref_version_title">Version</string>
+    <string name="pref_check_updates_title">Check for Updates</string>
+    <string name="pref_check_updates_summary">Check GitHub for a newer version</string>
     <string name="pref_licenses_title">Open Source Licenses</string>
     <string name="pref_licenses_summary">View third-party software licenses</string>
+
+    <!-- Update Checker -->
+    <string name="update_checking">Checking for updates\u2026</string>
+    <string name="update_up_to_date">You are running the latest version.</string>
+    <string name="update_available_title">Update Available</string>
+    <string name="update_download_install">Download &amp; Install</string>
+    <string name="update_downloading">Downloading update\u2026</string>
+    <string name="update_download_failed">Download failed. Please try again.</string>
+    <string name="update_check_failed">Could not check for updates. Check your internet connection.</string>
+    <string name="update_no_apk">Update found but no APK available for download.</string>
+    <string name="update_install_failed">Could not open the installer. Please install the APK manually from your Downloads.</string>
 
     <!-- Voice Input UI -->
     <string name="voice_input_hint">Tap to speak</string>

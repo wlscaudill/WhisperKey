@@ -1,6 +1,8 @@
 package com.whisperkey
 
 import android.inputmethodservice.InputMethodService
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -25,6 +27,8 @@ class WhisperKeyboardService : InputMethodService() {
         private const val MODE_QWERTY = 2
     }
 
+    private enum class SessionState { IDLE, RECORDING, PROCESSING }
+
     private var viewFlipper: ViewFlipper? = null
     private var voiceInputView: VoiceInputView? = null
     private var numericKeyboardView: NumericKeyboardView? = null
@@ -34,6 +38,9 @@ class WhisperKeyboardService : InputMethodService() {
     private var emojiManager: EmojiManager? = null
     private var modelManager: ModelManager? = null
     private var isModelLoaded = false
+    private var sessionState = SessionState.IDLE
+    private var pendingText: String? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -212,6 +219,11 @@ class WhisperKeyboardService : InputMethodService() {
         viewFlipper!!.addView(numericKeyboardView, fillParent)
         viewFlipper!!.addView(qwertyKeyboardView, fillParent)
 
+        // Restore keepScreenOn if session is active (e.g. after rotation)
+        if (sessionState != SessionState.IDLE) {
+            viewFlipper!!.keepScreenOn = true
+        }
+
         return viewFlipper!!
     }
 
@@ -227,8 +239,10 @@ class WhisperKeyboardService : InputMethodService() {
     }
 
     private fun stopRecordingIfActive() {
-        audioRecorder?.stop()
-        voiceInputView?.reset()
+        if (sessionState == SessionState.RECORDING) {
+            audioRecorder?.stop()
+            endSession()
+        }
     }
 
     private fun openSettings() {
@@ -239,7 +253,7 @@ class WhisperKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        Logger.d(TAG, "onStartInputView, restarting: $restarting")
+        Logger.d(TAG, "onStartInputView, restarting: $restarting, state=$sessionState")
 
         // Reload model if not loaded
         if (!isModelLoaded) {
@@ -253,11 +267,32 @@ class WhisperKeyboardService : InputMethodService() {
         voiceInputView?.updateEnterButton(info)
         numericKeyboardView?.updateEnterButton(info)
 
-        // Update UI based on model status
-        if (!isModelLoaded) {
-            voiceInputView?.showNoModel()
-        } else {
-            voiceInputView?.reset()
+        // Commit any pending text from a transcription that completed during rotation
+        pendingText?.let { text ->
+            Logger.i(TAG, "Committing pending text: \"$text\"")
+            currentInputConnection?.commitText(text, 1)
+            pendingText = null
+        }
+
+        // Restore UI state based on session
+        when (sessionState) {
+            SessionState.PROCESSING -> {
+                // Transcription is still running, show processing UI
+                voiceInputView?.showProcessing()
+            }
+            SessionState.RECORDING -> {
+                // Should not happen (onFinishInput handles this), but recover gracefully
+                Logger.w(TAG, "Unexpected RECORDING state in onStartInputView")
+                endSession()
+            }
+            SessionState.IDLE -> {
+                // Update UI based on model status
+                if (!isModelLoaded) {
+                    voiceInputView?.showNoModel()
+                } else {
+                    voiceInputView?.reset()
+                }
+            }
         }
     }
 
@@ -279,8 +314,27 @@ class WhisperKeyboardService : InputMethodService() {
 
     override fun onFinishInput() {
         super.onFinishInput()
-        Logger.d(TAG, "onFinishInput")
-        stopRecording()
+        Logger.d(TAG, "onFinishInput (state=$sessionState)")
+        when (sessionState) {
+            SessionState.RECORDING -> {
+                // Rotation during recording: stop recorder and process captured audio
+                val audioData = audioRecorder?.stop()
+                if (audioData != null) {
+                    Logger.i(TAG, "Rotation during recording, processing ${audioData.size} samples")
+                    processAudio(audioData)
+                } else {
+                    Logger.w(TAG, "Rotation during recording but no audio captured")
+                    endSession()
+                }
+            }
+            SessionState.PROCESSING -> {
+                // Rotation during processing: let transcription continue
+                Logger.i(TAG, "Rotation during processing, letting transcription continue")
+            }
+            SessionState.IDLE -> {
+                // Normal case, nothing to do
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -298,6 +352,8 @@ class WhisperKeyboardService : InputMethodService() {
         }
 
         Logger.i(TAG, "Starting recording")
+        sessionState = SessionState.RECORDING
+        viewFlipper?.keepScreenOn = true
         audioRecorder?.start { audioData ->
             // Calculate RMS amplitude from the audio samples
             val amplitude = calculateAmplitude(audioData)
@@ -323,6 +379,10 @@ class WhisperKeyboardService : InputMethodService() {
     }
 
     private fun stopRecording() {
+        if (sessionState != SessionState.RECORDING) {
+            Logger.d(TAG, "stopRecording called but not recording (state=$sessionState)")
+            return
+        }
         Logger.i(TAG, "Stopping recording")
         val audioData = audioRecorder?.stop()
         if (audioData != null) {
@@ -330,12 +390,13 @@ class WhisperKeyboardService : InputMethodService() {
             processAudio(audioData)
         } else {
             Logger.w(TAG, "No audio data captured")
-            voiceInputView?.reset()
+            endSession()
         }
     }
 
     private fun processAudio(audioData: FloatArray) {
         Logger.i(TAG, "Processing audio...")
+        sessionState = SessionState.PROCESSING
         voiceInputView?.showProcessing()
 
         whisperEngine?.transcribe(audioData) { result ->
@@ -350,20 +411,28 @@ class WhisperKeyboardService : InputMethodService() {
         if (text.isNotBlank()) {
             val processedText = emojiManager?.processText(text) ?: text
             Logger.d(TAG, "After emoji processing: \"$processedText\"")
-            commitText(processedText)
+            val ic = currentInputConnection
+            if (ic != null) {
+                ic.commitText(processedText, 1)
+            } else {
+                Logger.w(TAG, "No input connection, storing as pending text")
+                pendingText = processedText
+            }
         } else {
             Logger.w(TAG, "Empty transcription result")
         }
+        endSession()
+    }
+
+    private fun endSession() {
+        Logger.d(TAG, "Ending session (was $sessionState)")
+        sessionState = SessionState.IDLE
+        viewFlipper?.keepScreenOn = false
         voiceInputView?.reset()
     }
 
-    private fun commitText(text: String) {
-        Logger.d(TAG, "Committing text: \"$text\"")
-        currentInputConnection?.commitText(text, 1)
-    }
-
     private fun runOnMainThread(action: () -> Unit) {
-        voiceInputView?.post(action)
+        mainHandler.post(action)
     }
 
     private fun performSelectAll() {
