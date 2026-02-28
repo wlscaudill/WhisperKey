@@ -23,13 +23,27 @@ WhisperKey for Android is a custom Input Method Editor (IME) that replaces your 
 - **Haptic feedback** (configurable)
 - Requires Android 8.0+ (API 26)
 
-### Building and Installing
+### Installing
+
+Download the latest APK from [GitHub Releases](https://github.com/wlscaudill/WhisperKey/releases) (look for the `android-v*` tag). Transfer it to your device and install — you may need to enable "Install from unknown sources" in your device settings.
+
+You can also check for updates from within the app: **Settings > About > Check for Updates**.
+
+### Building from Source
 
 1. Open the `Android/` folder in **Android Studio**
 2. Let Gradle sync and download dependencies
 3. Build the project: **Build > Build Bundle(s) / APK(s) > Build APK(s)**
 4. The generated APK will be in `Android/app/build/outputs/apk/debug/`
-5. Transfer the APK to your Android device and install it (you may need to enable "Install from unknown sources" in your device settings)
+
+To create a release build and publish to GitHub:
+
+```powershell
+cd Android
+.\Build.ps1 -Release
+```
+
+This bumps the version, builds a release APK, and creates a GitHub release tagged `android-v{version}` with the APK attached.
 
 ### Enabling the Keyboard
 
@@ -59,24 +73,21 @@ WhisperKey for Windows runs as a system tray application. Press a global hotkey 
 - **Configurable microphone** selection
 - **Clipboard restoration**: optionally restores your clipboard contents after pasting transcribed text
 - **Hotkey conflict resolution**: detects conflicts with Windows shortcuts and offers to override them or pick a different key
+- **Update checker**: automatically checks for new releases on startup (can be disabled in Settings), or manually via the tray menu
 - Requires Windows 10+
 
-### Prerequisites
+### Installing
+
+Download the latest zip from [GitHub Releases](https://github.com/wlscaudill/WhisperKey/releases) (look for the `windows-v*` tag). Extract it to a folder of your choice and run `WhisperKey.exe`.
+
+### Prerequisites (building from source)
 
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (build and runtime)
 - [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) (required by the native whisper.cpp runtime)
 
-### Building
+### Building from Source
 
-From a PowerShell terminal in the `Windows/` directory, run:
-
-```powershell
-.\Build.ps1 -Configuration Release -Publish
-```
-
-This builds and publishes a self-contained executable to `Windows/publish/`. The published output includes `WhisperKey.exe` and the native Whisper runtime DLLs.
-
-Other build options:
+From a PowerShell terminal in the `Windows/` directory:
 
 ```powershell
 # Debug build only
@@ -85,16 +96,24 @@ Other build options:
 # Build and run immediately
 .\Build.ps1 -Run
 
-# Release build without publishing
-.\Build.ps1 -Configuration Release
+# Release build and publish to Windows/publish/
+.\Build.ps1 -Configuration Release -Publish
 
 # Kill running instance, rebuild, publish, and relaunch
 .\Build.ps1 -Restart
 ```
 
+To create a release build and publish to GitHub:
+
+```powershell
+.\Build.ps1 -Release
+```
+
+This bumps the version, builds, publishes, zips the output, and creates a GitHub release tagged `windows-v{version}` with the zip attached.
+
 ### Running
 
-1. Run `WhisperKey.exe` from the `publish/` directory
+1. Run `WhisperKey.exe` from the `publish/` directory (or extracted release zip)
 2. On first launch, the app will download the default Whisper model (~150 MB for base English)
 3. A tray icon appears in your system tray — right-click it for options
 4. Press your configured hotkey (default: Win+H) to start recording, press again to stop
@@ -111,6 +130,7 @@ Right-click the tray icon and select **Settings** (or double-click the icon) to 
 - **Clipboard restoration** after paste
 - **Start with Windows** — auto-launch on login
 - **Whisper model** — download, delete, and switch between models
+- **Check for updates on startup** — disable if you build from source
 
 Settings are stored in `%LocalAppData%\WhisperKey\settings.json`. Models are downloaded to `%LocalAppData%\WhisperKey\Models\`.
 
