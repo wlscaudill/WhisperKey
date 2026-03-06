@@ -86,6 +86,29 @@ class SettingsActivity : AppCompatActivity() {
                     true
                 }
             }
+
+            findPreference<ListPreference>("language")?.apply {
+                setOnPreferenceChangeListener { _, newValue ->
+                    val lang = newValue as String
+                    if (lang == "auto") {
+                        val modelSize = preferenceManager.sharedPreferences
+                            ?.getString("model_size", "base") ?: "base"
+                        if (ModelManager.ENGLISH_ONLY_MODELS.contains(modelSize)) {
+                            AlertDialog.Builder(requireContext())
+                                .setTitle("Multilingual Model Recommended")
+                                .setMessage(
+                                    "Auto-detect works best with a multilingual model. " +
+                                    "Your current model (${ModelManager.MODELS[modelSize]?.displayName}) " +
+                                    "is English-only. Consider switching to a multilingual model in " +
+                                    "the Model Size setting for accurate language detection."
+                                )
+                                .setPositiveButton(R.string.ok, null)
+                                .show()
+                        }
+                    }
+                    true
+                }
+            }
         }
 
         private fun checkAndPromptDownload(modelSize: String) {

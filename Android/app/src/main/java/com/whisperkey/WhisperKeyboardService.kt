@@ -58,11 +58,16 @@ class WhisperKeyboardService : InputMethodService() {
     private fun loadModel() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val modelSize = prefs.getString("model_size", "base") ?: "base"
+        val language = prefs.getString("language", "en") ?: "en"
 
         Logger.i(TAG, "=== Loading Model ===")
         Logger.i(TAG, "Model size: $modelSize")
+        Logger.i(TAG, "Language: $language")
         Logger.i(TAG, "Storage: ${modelManager?.getStorageDisplayName()}")
         Logger.i(TAG, "Using SD Card: ${modelManager?.isUsingSdCard()}")
+
+        // Apply language setting to whisper engine
+        whisperEngine?.language = language
 
         // Check if model is downloaded
         val isDownloaded = modelManager?.isModelDownloaded(modelSize) ?: false
@@ -298,6 +303,10 @@ class WhisperKeyboardService : InputMethodService() {
 
     private fun applySettings() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+
+        // Language preference
+        val language = prefs.getString("language", "en") ?: "en"
+        whisperEngine?.language = language
 
         // Recording mode
         val recordingMode = prefs.getString("recording_mode", "tap_toggle")

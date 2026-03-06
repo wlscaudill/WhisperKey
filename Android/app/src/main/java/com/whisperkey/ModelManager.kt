@@ -50,8 +50,35 @@ class ModelManager(private val context: Context) {
                 displayName = "Small (English)",
                 sizeBytes = 487_601_967L,
                 sha256 = "db8a495a91d927739e50b3fc1ef8d61e"
+            ),
+            "tiny_multi" to ModelInfo(
+                fileName = "ggml-tiny.bin",
+                displayName = "Tiny (Multilingual)",
+                sizeBytes = 77_691_713L,
+                sha256 = ""
+            ),
+            "base_multi" to ModelInfo(
+                fileName = "ggml-base.bin",
+                displayName = "Base (Multilingual)",
+                sizeBytes = 147_951_465L,
+                sha256 = ""
+            ),
+            "small_multi" to ModelInfo(
+                fileName = "ggml-small.bin",
+                displayName = "Small (Multilingual)",
+                sizeBytes = 487_601_967L,
+                sha256 = ""
+            ),
+            "medium_multi" to ModelInfo(
+                fileName = "ggml-medium.bin",
+                displayName = "Medium (Multilingual)",
+                sizeBytes = 1_533_774_781L,
+                sha256 = ""
             )
         )
+
+        // Model keys that are English-only (used for language compatibility checks)
+        val ENGLISH_ONLY_MODELS = setOf("tiny", "base", "small")
     }
 
     data class ModelInfo(

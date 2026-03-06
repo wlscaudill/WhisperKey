@@ -34,6 +34,7 @@ class WhisperEngine(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var contextHandle: Long = 0
     private var isInitialized = false
+    var language: String = "en"
 
     /**
      * Initializes the Whisper engine with the specified model.
@@ -104,7 +105,7 @@ class WhisperEngine(private val context: Context) {
         val startTime = System.currentTimeMillis()
 
         try {
-            val result = nativeTranscribe(contextHandle, audioData, NUM_THREADS)
+            val result = nativeTranscribe(contextHandle, audioData, NUM_THREADS, language)
             val elapsed = System.currentTimeMillis() - startTime
             Logger.i(TAG, "Transcription completed in ${elapsed}ms: \"${result.take(100)}${if (result.length > 100) "..." else ""}\"")
             return result
@@ -150,7 +151,7 @@ class WhisperEngine(private val context: Context) {
     // Native method declarations
     private external fun nativeInit(modelPath: String): Long
     private external fun nativeRelease(contextHandle: Long)
-    private external fun nativeTranscribe(contextHandle: Long, audioData: FloatArray, numThreads: Int): String
+    private external fun nativeTranscribe(contextHandle: Long, audioData: FloatArray, numThreads: Int, language: String): String
     private external fun nativeIsLoaded(contextHandle: Long): Boolean
     private external fun nativeGetSystemInfo(): String
 }

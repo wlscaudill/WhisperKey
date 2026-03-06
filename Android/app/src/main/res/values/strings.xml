@@ -23,14 +23,34 @@
 
     <!-- Model Size Options -->
     <string-array name="model_size_entries">
-        <item>Tiny (75 MB) - Fastest</item>
-        <item>Base (142 MB) - Recommended</item>
-        <item>Small (466 MB) - Best Quality</item>
+        <item>Tiny English (75 MB) - Fastest</item>
+        <item>Base English (142 MB) - Recommended</item>
+        <item>Small English (466 MB) - Best English</item>
+        <item>Tiny Multilingual (75 MB)</item>
+        <item>Base Multilingual (142 MB)</item>
+        <item>Small Multilingual (466 MB)</item>
+        <item>Medium Multilingual (1.5 GB)</item>
     </string-array>
     <string-array name="model_size_values">
         <item>tiny</item>
         <item>base</item>
         <item>small</item>
+        <item>tiny_multi</item>
+        <item>base_multi</item>
+        <item>small_multi</item>
+        <item>medium_multi</item>
+    </string-array>
+
+    <!-- Language Preferences -->
+    <string name="pref_language_title">Language</string>
+    <string name="pref_language_summary">Language for speech recognition</string>
+    <string-array name="language_entries">
+        <item>English</item>
+        <item>Auto-detect</item>
+    </string-array>
+    <string-array name="language_values">
+        <item>en</item>
+        <item>auto</item>
     </string-array>
 
     <!-- Audio Preferences -->

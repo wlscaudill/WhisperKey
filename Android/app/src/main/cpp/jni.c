@@ -61,7 +61,8 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
         jobject thiz,
         jlong context_ptr,
         jfloatArray audio_data,
-        jint num_threads) {
+        jint num_threads,
+        jstring language_str) {
     UNUSED(thiz);
 
     if (context_ptr == 0) {
@@ -75,7 +76,9 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
     jfloat *audio_data_arr = (*env)->GetFloatArrayElements(env, audio_data, NULL);
     jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
 
-    LOGI("Transcribing %d samples with %d threads", audio_data_length, num_threads);
+    // Get language string from Java
+    const char *language = (*env)->GetStringUTFChars(env, language_str, NULL);
+    LOGI("Transcribing %d samples with %d threads, language=%s", audio_data_length, num_threads, language);
 
     // Set up transcription parameters - optimized for speed
     struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
@@ -84,7 +87,7 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
     params.print_timestamps = false;
     params.print_special = false;
     params.translate = false;
-    params.language = "en";
+    params.language = language;
     params.n_threads = num_threads;
     params.offset_ms = 0;
     params.no_context = true;
@@ -97,6 +100,7 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
     int result = whisper_full(context, params, audio_data_arr, audio_data_length);
 
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio_data_arr, JNI_ABORT);
+    (*env)->ReleaseStringUTFChars(env, language_str, language);
 
     if (result != 0) {
         LOGE("Transcription failed with code: %d", result);

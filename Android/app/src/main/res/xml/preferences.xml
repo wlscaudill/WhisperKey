@@ -31,6 +31,14 @@
 
     <PreferenceCategory android:title="@string/pref_category_audio">
 
+        <ListPreference
+            android:key="language"
+            android:title="@string/pref_language_title"
+            android:summary="@string/pref_language_summary"
+            android:entries="@array/language_entries"
+            android:entryValues="@array/language_values"
+            android:defaultValue="en" />
+
         <SwitchPreferenceCompat
             android:key="auto_detect_silence"
             android:title="@string/pref_auto_silence_title"

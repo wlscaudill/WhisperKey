@@ -157,16 +157,19 @@ class WhisperRecognitionService : RecognitionService() {
     }
 
     private fun ensureModelLoaded(): Boolean {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val language = prefs.getString("language", "en") ?: "en"
+        whisperEngine?.language = language
+
         if (whisperEngine?.isReady() == true) return true
 
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val modelSize = prefs.getString("model_size", "base") ?: "base"
         val modelPath = modelManager?.getDownloadedModelPath(modelSize) ?: return false
         val file = File(modelPath)
         if (!file.exists() || !file.canRead()) return false
 
         isModelLoaded = whisperEngine?.initialize(modelPath) ?: false
-        Logger.i(TAG, "Model load result: $isModelLoaded (size: $modelSize)")
+        Logger.i(TAG, "Model load result: $isModelLoaded (size: $modelSize, language: $language)")
         return isModelLoaded
     }
 }
