@@ -25,6 +25,7 @@ class WhisperKeyboardService : InputMethodService() {
         private const val MODE_VOICE = 0
         private const val MODE_NUMERIC = 1
         private const val MODE_QWERTY = 2
+        private const val ROTATION_GRACE_PERIOD_MS = 2000L
     }
 
     private enum class SessionState { IDLE, RECORDING, PROCESSING }
@@ -41,6 +42,7 @@ class WhisperKeyboardService : InputMethodService() {
     private var sessionState = SessionState.IDLE
     private var pendingText: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var finishInputCleanupRunnable: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -260,6 +262,13 @@ class WhisperKeyboardService : InputMethodService() {
         super.onStartInputView(info, restarting)
         Logger.d(TAG, "onStartInputView, restarting: $restarting, state=$sessionState")
 
+        // Cancel any pending cleanup from onFinishInput (this is a rotation, not a dismiss)
+        finishInputCleanupRunnable?.let {
+            mainHandler.removeCallbacks(it)
+            finishInputCleanupRunnable = null
+            Logger.d(TAG, "Cancelled onFinishInput cleanup (rotation detected)")
+        }
+
         // Reload model if not loaded
         if (!isModelLoaded) {
             loadModel()
@@ -286,9 +295,10 @@ class WhisperKeyboardService : InputMethodService() {
                 voiceInputView?.showProcessing()
             }
             SessionState.RECORDING -> {
-                // Should not happen (onFinishInput handles this), but recover gracefully
-                Logger.w(TAG, "Unexpected RECORDING state in onStartInputView")
-                endSession()
+                // Rotation during active recording — restore recording UI
+                Logger.i(TAG, "Restoring recording UI after rotation")
+                voiceInputView?.showRecording()
+                viewFlipper?.keepScreenOn = true
             }
             SessionState.IDLE -> {
                 // Update UI based on model status
@@ -326,18 +336,26 @@ class WhisperKeyboardService : InputMethodService() {
         Logger.d(TAG, "onFinishInput (state=$sessionState)")
         when (sessionState) {
             SessionState.RECORDING -> {
-                // Rotation during recording: stop recorder and process captured audio
-                val audioData = audioRecorder?.stop()
-                if (audioData != null) {
-                    Logger.i(TAG, "Rotation during recording, processing ${audioData.size} samples")
-                    processAudio(audioData)
-                } else {
-                    Logger.w(TAG, "Rotation during recording but no audio captured")
-                    endSession()
+                // Don't stop recording immediately — this may be a rotation.
+                // Schedule a delayed cleanup; if onStartInputView fires in time
+                // (rotation), cancel it and keep recording.
+                Logger.i(TAG, "onFinishInput during recording, scheduling delayed cleanup")
+                finishInputCleanupRunnable = Runnable {
+                    finishInputCleanupRunnable = null
+                    if (sessionState == SessionState.RECORDING) {
+                        Logger.i(TAG, "Cleanup: keyboard dismissed during recording, stopping")
+                        val audioData = audioRecorder?.stop()
+                        if (audioData != null && audioData.isNotEmpty()) {
+                            processAudio(audioData)
+                        } else {
+                            endSession()
+                        }
+                    }
                 }
+                mainHandler.postDelayed(finishInputCleanupRunnable!!, ROTATION_GRACE_PERIOD_MS)
             }
             SessionState.PROCESSING -> {
-                // Rotation during processing: let transcription continue
+                // Let transcription continue
                 Logger.i(TAG, "Rotation during processing, letting transcription continue")
             }
             SessionState.IDLE -> {
@@ -349,6 +367,8 @@ class WhisperKeyboardService : InputMethodService() {
     override fun onDestroy() {
         super.onDestroy()
         Logger.i(TAG, "WhisperKeyboardService onDestroy")
+        finishInputCleanupRunnable?.let { mainHandler.removeCallbacks(it) }
+        finishInputCleanupRunnable = null
         audioRecorder?.release()
         whisperEngine?.release()
     }
@@ -435,6 +455,11 @@ class WhisperKeyboardService : InputMethodService() {
 
     private fun endSession() {
         Logger.d(TAG, "Ending session (was $sessionState)")
+        // Safety: stop recorder if it's still running (prevents leaked recording)
+        if (audioRecorder?.isRecording() == true) {
+            Logger.w(TAG, "endSession: stopping leaked audio recorder")
+            audioRecorder?.stop()
+        }
         sessionState = SessionState.IDLE
         viewFlipper?.keepScreenOn = false
         voiceInputView?.reset()

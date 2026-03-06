@@ -253,6 +253,20 @@ class VoiceInputView @JvmOverloads constructor(
     }
 
     /**
+     * Restores the recording visual state without triggering the listener.
+     * Used after rotation to show that recording is still active.
+     */
+    fun showRecording() {
+        isRecording = true
+        isProcessing = false
+        micButton.isActivated = true
+        micButton.isEnabled = true
+        statusText.text = context.getString(R.string.voice_input_listening)
+        waveformContainer.visibility = View.VISIBLE
+        waveformView.clear()
+    }
+
+    /**
      * Shows the processing state.
      */
     fun showProcessing() {
