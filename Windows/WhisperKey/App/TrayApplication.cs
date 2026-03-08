@@ -427,6 +427,9 @@ public class TrayApplication : Form
                 _hotkeyManager.Register(Handle, _settings.Hotkey);
             }
 
+            // Sync settings reference for TextInjector
+            _textInjector.Settings = _settings;
+
             // Update audio device if changed
             if (oldSettings.AudioDeviceNumber != _settings.AudioDeviceNumber)
             {
