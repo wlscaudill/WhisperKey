@@ -1,5 +1,11 @@
 namespace WhisperKeys.Transcription;
 
+public enum ParakeetFamily
+{
+    Transducer,
+    NeMoCtc
+}
+
 public class ModelDescriptor
 {
     public TranscriptionEngine Engine { get; init; } = TranscriptionEngine.Whisper;
@@ -14,4 +20,15 @@ public class ModelDescriptor
     public required string Size { get; init; }
     public required string Url { get; init; }
     public bool IsDownloaded { get; set; }
+
+    /// <summary>
+    /// Parakeet only: which sherpa-onnx model family this bundle uses. Null for Whisper.
+    /// </summary>
+    public ParakeetFamily? Family { get; init; }
+
+    /// <summary>
+    /// Languages this model can transcribe. Drives the language picker in Settings.
+    /// "auto" means the engine itself does language detection (Whisper multilingual).
+    /// </summary>
+    public string[] Languages { get; init; } = ["en"];
 }
