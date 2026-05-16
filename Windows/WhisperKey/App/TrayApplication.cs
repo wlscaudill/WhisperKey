@@ -28,7 +28,7 @@ public class TrayApplication : Form
 
     private readonly HotkeyManager _hotkeyManager;
     private readonly AudioRecorder _audioRecorder;
-    private readonly WhisperTranscriber _transcriber;
+    private ITranscriber _transcriber;
     private readonly TextInjector _textInjector;
     private readonly ModelManager _modelManager;
     private readonly UpdateChecker _updateChecker;
@@ -43,7 +43,7 @@ public class TrayApplication : Form
         _settings = settings;
         _hotkeyManager = new HotkeyManager();
         _audioRecorder = new AudioRecorder { DeviceNumber = settings.AudioDeviceNumber };
-        _transcriber = new WhisperTranscriber();
+        _transcriber = TranscriberFactory.Create(settings.Engine);
         _modelManager = new ModelManager();
         _updateChecker = new UpdateChecker();
         _textInjector = new TextInjector(_settings);
@@ -191,21 +191,34 @@ public class TrayApplication : Form
     {
         SetState(AppState.Loading);
 
-        var modelPath = _modelManager.GetModelPath(_settings.ModelFileName);
+        var descriptor = _modelManager.FindModel(_settings.Engine, _settings.ModelFileName);
+        if (descriptor == null)
+        {
+            Logger.Error($"Unknown model in settings: engine={_settings.Engine}, file={_settings.ModelFileName}");
+            SetState(AppState.Error);
+            _trayIcon.ShowBalloonTip(5000, "WhisperKey",
+                $"Selected model '{_settings.ModelFileName}' is not in the catalog. Open Settings → Model.",
+                ToolTipIcon.Error);
+            return;
+        }
+
+        var modelPath = _modelManager.GetModelPath(descriptor);
         Logger.Debug($"Model path: {modelPath}");
 
-        if (!_modelManager.IsModelDownloaded(_settings.ModelFileName))
+        if (!_modelManager.IsModelDownloaded(descriptor))
         {
-            Logger.Log($"Model not found, downloading {_settings.ModelFileName}...");
-            UpdateStatus($"Downloading {_settings.ModelFileName}...");
+            Logger.Log($"Model not found, downloading {descriptor.DisplayName}...");
+            UpdateStatus($"Downloading {descriptor.DisplayName}...");
             _trayIcon.ShowBalloonTip(3000, "WhisperKey",
-                $"Downloading model {_settings.ModelFileName}...", ToolTipIcon.Info);
+                $"Downloading model {descriptor.DisplayName}...", ToolTipIcon.Info);
 
             try
             {
                 var progress = new Progress<double>(p =>
                     BeginInvoke(() => UpdateStatus($"Downloading... {p:P0}")));
-                await _modelManager.DownloadModelAsync(_settings.ModelFileName, progress);
+                var status = new Progress<string>(s =>
+                    BeginInvoke(() => UpdateStatus(s)));
+                await _modelManager.DownloadModelAsync(descriptor, progress, status);
                 Logger.Log("Model download complete");
             }
             catch (Exception ex)
@@ -220,9 +233,8 @@ public class TrayApplication : Form
 
         try
         {
-            Logger.Log("Loading whisper model...");
-            await _transcriber.LoadModelAsync(modelPath, _settings.Language,
-                _settings.ThreadCount, _settings.GreedyDecoding);
+            Logger.Log($"Loading {_settings.Engine} model...");
+            await _transcriber.LoadAsync(modelPath, _settings);
             Logger.Log("Model loaded successfully");
             SetState(AppState.Idle);
             _trayIcon.ShowBalloonTip(2000, "WhisperKey",
@@ -445,8 +457,17 @@ public class TrayApplication : Form
                     ToolTipIcon.Warning);
             }
 
-            // Reload model if changed
-            if (oldSettings.ModelFileName != _settings.ModelFileName ||
+            // Engine change requires building a different transcriber implementation.
+            if (oldSettings.Engine != _settings.Engine)
+            {
+                Logger.Log($"Engine changed: {oldSettings.Engine} → {_settings.Engine}, rebuilding transcriber");
+                _transcriber.Dispose();
+                _transcriber = TranscriberFactory.Create(_settings.Engine);
+                _transcriber.StatusChanged += status => BeginInvoke(() => UpdateStatus(status));
+                _ = LoadModelAsync();
+            }
+            // Reload model if any model-affecting setting changed
+            else if (oldSettings.ModelFileName != _settings.ModelFileName ||
                 oldSettings.Language != _settings.Language ||
                 oldSettings.ThreadCount != _settings.ThreadCount ||
                 oldSettings.GreedyDecoding != _settings.GreedyDecoding)

@@ -25,6 +25,7 @@ public class SettingsForm : Form
     private CheckBox _checkForUpdatesCheck = null!;
 
     // Model tab controls
+    private ComboBox _engineCombo = null!;
     private ComboBox _modelCombo = null!;
     private ListView _availableModelsList = null!;
     private Button _downloadBtn = null!;
@@ -33,6 +34,8 @@ public class SettingsForm : Form
     private Label _downloadStatusLabel = null!;
 
     private CancellationTokenSource? _downloadCts;
+
+    private bool _suppressEngineChange;
 
     public SettingsForm(AppSettings settings, ModelManager modelManager)
     {
@@ -117,7 +120,7 @@ public class SettingsForm : Form
         page.Controls.Add(_hotkeyDisplay);
         page.Controls.Add(_changeHotkeyBtn);
 
-        // Language
+        // Language (items populated from the currently selected model on the Model tab)
         page.Controls.Add(new Label { Text = "Language:", Location = new Point(labelX, y + 4), AutoSize = true });
         _languageCombo = new ComboBox
         {
@@ -125,7 +128,6 @@ public class SettingsForm : Form
             Width = 240,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        _languageCombo.Items.AddRange(new object[] { "English", "Auto-detect" });
         y += rowSpacing;
 
         page.Controls.Add(_languageCombo);
@@ -258,6 +260,20 @@ public class SettingsForm : Form
         int controlX = 200;
         int fullW = 660;
 
+        // Engine selector
+        page.Controls.Add(new Label { Text = "Engine:", Location = new Point(labelX, y + 4), AutoSize = true });
+        _engineCombo = new ComboBox
+        {
+            Location = new Point(controlX, y),
+            Width = fullW - controlX + labelX,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _engineCombo.Items.AddRange(new object[] { "Whisper", "Parakeet (sherpa-onnx, CPU)" });
+        _engineCombo.SelectedIndexChanged += OnEngineComboChanged;
+        y += 52;
+
+        page.Controls.Add(_engineCombo);
+
         // Current model
         page.Controls.Add(new Label { Text = "Active Model:", Location = new Point(labelX, y + 4), AutoSize = true });
         _modelCombo = new ComboBox
@@ -266,6 +282,7 @@ public class SettingsForm : Form
             Width = fullW - controlX + labelX,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
+        _modelCombo.SelectedIndexChanged += OnActiveModelChanged;
         y += 52;
 
         page.Controls.Add(_modelCombo);
@@ -277,15 +294,15 @@ public class SettingsForm : Form
         _availableModelsList = new ListView
         {
             Location = new Point(labelX, y),
-            Size = new Size(fullW, 300),
+            Size = new Size(fullW, 252),
             View = View.Details,
             FullRowSelect = true,
             MultiSelect = false
         };
-        _availableModelsList.Columns.Add("Model", 260);
+        _availableModelsList.Columns.Add("Model", 320);
         _availableModelsList.Columns.Add("Size", 120);
-        _availableModelsList.Columns.Add("Status", 240);
-        y += 312;
+        _availableModelsList.Columns.Add("Status", 180);
+        y += 264;
 
         page.Controls.Add(_availableModelsList);
 
@@ -320,8 +337,7 @@ public class SettingsForm : Form
         page.Controls.Add(_downloadProgress);
         page.Controls.Add(_downloadStatusLabel);
 
-        RefreshModelList();
-
+        // Initial population happens in LoadSettingsToUI once CurrentSettings.Engine is reflected.
         return page;
     }
 
@@ -348,8 +364,11 @@ public class SettingsForm : Form
         // Hotkey
         _hotkeyDisplay.Text = CurrentSettings.Hotkey.ToString();
 
-        // Language
-        _languageCombo.SelectedIndex = CurrentSettings.Language == "en" ? 0 : 1;
+        // Engine — initial value drives the rest of the Model tab population.
+        _suppressEngineChange = true;
+        _engineCombo.SelectedIndex = CurrentSettings.Engine == TranscriptionEngine.Parakeet ? 1 : 0;
+        _suppressEngineChange = false;
+        RefreshModelList();
 
         // Audio device: index 0 = default (-1), index 1+ = device 0, 1, ...
         var deviceIndex = CurrentSettings.AudioDeviceNumber + 1;
@@ -390,7 +409,10 @@ public class SettingsForm : Form
     private void SaveUIToSettings()
     {
         CurrentSettings.Mode = _toggleMode.Checked ? RecordingMode.Toggle : RecordingMode.PushToTalk;
-        CurrentSettings.Language = _languageCombo.SelectedIndex == 0 ? "en" : "auto";
+
+        if (_languageCombo.SelectedItem is LanguageOption lang)
+            CurrentSettings.Language = lang.Code;
+
         CurrentSettings.AudioDeviceNumber = _audioDeviceCombo.SelectedIndex - 1; // -1 = default
         CurrentSettings.RestoreClipboard = _restoreClipboardCheck.Checked;
         CurrentSettings.StartWithWindows = _startWithWindowsCheck.Checked;
@@ -414,18 +436,28 @@ public class SettingsForm : Form
         // Check for updates
         CurrentSettings.CheckForUpdatesOnStartup = _checkForUpdatesCheck.Checked;
 
-        if (_modelCombo.SelectedItem is string selectedModel)
+        // Engine + active model
+        CurrentSettings.Engine = _engineCombo.SelectedIndex == 1
+            ? TranscriptionEngine.Parakeet
+            : TranscriptionEngine.Whisper;
+
+        if (_modelCombo.SelectedItem is ModelDescriptor selectedModel)
         {
-            CurrentSettings.ModelFileName = selectedModel;
+            CurrentSettings.ModelFileName = selectedModel.FileName;
         }
     }
+
+    private TranscriptionEngine SelectedEngine =>
+        _engineCombo.SelectedIndex == 1 ? TranscriptionEngine.Parakeet : TranscriptionEngine.Whisper;
 
     private void RefreshModelList()
     {
         _availableModelsList.Items.Clear();
         _modelCombo.Items.Clear();
 
-        var models = _modelManager.GetModelsWithStatus();
+        var engine = SelectedEngine;
+        var models = _modelManager.GetModelsWithStatus().Where(m => m.Engine == engine).ToList();
+
         foreach (var model in models)
         {
             var item = new ListViewItem(model.DisplayName);
@@ -436,14 +468,103 @@ public class SettingsForm : Form
 
             if (model.IsDownloaded)
             {
-                _modelCombo.Items.Add(model.FileName);
+                _modelCombo.Items.Add(model);
             }
         }
 
-        // Select current model in combo
-        var idx = _modelCombo.Items.IndexOf(CurrentSettings.ModelFileName);
-        if (idx >= 0) _modelCombo.SelectedIndex = idx;
+        _modelCombo.DisplayMember = nameof(ModelDescriptor.DisplayName);
+
+        // Select current model in combo if it belongs to this engine; otherwise pick first available.
+        int selectIdx = -1;
+        if (CurrentSettings.Engine == engine)
+        {
+            for (int i = 0; i < _modelCombo.Items.Count; i++)
+            {
+                if (((ModelDescriptor)_modelCombo.Items[i]!).FileName == CurrentSettings.ModelFileName)
+                {
+                    selectIdx = i;
+                    break;
+                }
+            }
+        }
+
+        if (selectIdx >= 0) _modelCombo.SelectedIndex = selectIdx;
         else if (_modelCombo.Items.Count > 0) _modelCombo.SelectedIndex = 0;
+        else RefreshLanguageCombo(null); // no models downloaded for this engine yet
+    }
+
+    private void OnEngineComboChanged(object? sender, EventArgs e)
+    {
+        if (_suppressEngineChange) return;
+        RefreshModelList();
+    }
+
+    private void OnActiveModelChanged(object? sender, EventArgs e)
+    {
+        RefreshLanguageCombo(_modelCombo.SelectedItem as ModelDescriptor);
+    }
+
+    private void RefreshLanguageCombo(ModelDescriptor? model)
+    {
+        _languageCombo.Items.Clear();
+
+        // No active model selected — fall back to a single English entry so the form is still valid.
+        var langs = model?.Languages ?? ["en"];
+        foreach (var code in langs)
+            _languageCombo.Items.Add(new LanguageOption(code));
+
+        // Try to preserve the user's previously-saved language; otherwise default to the model's first.
+        int idx = -1;
+        for (int i = 0; i < _languageCombo.Items.Count; i++)
+        {
+            if (((LanguageOption)_languageCombo.Items[i]!).Code == CurrentSettings.Language)
+            {
+                idx = i;
+                break;
+            }
+        }
+
+        if (idx >= 0) _languageCombo.SelectedIndex = idx;
+        else if (_languageCombo.Items.Count > 0) _languageCombo.SelectedIndex = 0;
+
+        // Hide the combo when there's only one option to avoid implying a meaningful choice.
+        _languageCombo.Enabled = _languageCombo.Items.Count > 1;
+    }
+
+    private sealed class LanguageOption
+    {
+        public string Code { get; }
+        public LanguageOption(string code) { Code = code; }
+        public override string ToString() => Code switch
+        {
+            "auto" => "Auto-detect",
+            "en" => "English",
+            "bg" => "Bulgarian",
+            "hr" => "Croatian",
+            "cs" => "Czech",
+            "da" => "Danish",
+            "nl" => "Dutch",
+            "et" => "Estonian",
+            "fi" => "Finnish",
+            "fr" => "French",
+            "de" => "German",
+            "el" => "Greek",
+            "hu" => "Hungarian",
+            "it" => "Italian",
+            "lv" => "Latvian",
+            "lt" => "Lithuanian",
+            "mt" => "Maltese",
+            "pl" => "Polish",
+            "pt" => "Portuguese",
+            "ro" => "Romanian",
+            "sk" => "Slovak",
+            "sl" => "Slovenian",
+            "es" => "Spanish",
+            "sv" => "Swedish",
+            "ru" => "Russian",
+            "uk" => "Ukrainian",
+            _ => Code
+        };
     }
 
     private void OnChangeHotkeyClick(object? sender, EventArgs e)
@@ -465,7 +586,7 @@ public class SettingsForm : Form
             return;
         }
 
-        var modelInfo = (ModelInfo)_availableModelsList.SelectedItems[0].Tag!;
+        var modelInfo = (ModelDescriptor)_availableModelsList.SelectedItems[0].Tag!;
         if (modelInfo.IsDownloaded)
         {
             MessageBox.Show("This model is already downloaded.", "WhisperKey",
@@ -482,13 +603,19 @@ public class SettingsForm : Form
 
         try
         {
+            string phase = "Downloading";
             var progress = new Progress<double>(p =>
             {
                 _downloadProgress.Value = (int)(p * 100);
-                _downloadStatusLabel.Text = $"Downloading {modelInfo.DisplayName}... {p:P0}";
+                _downloadStatusLabel.Text = $"{phase} {modelInfo.DisplayName}… {p:P0}";
+            });
+            var status = new Progress<string>(s =>
+            {
+                phase = s.TrimEnd('…', '.', ' ');
+                _downloadStatusLabel.Text = $"{s} {modelInfo.DisplayName}";
             });
 
-            await _modelManager.DownloadModelAsync(modelInfo.FileName, progress, _downloadCts.Token);
+            await _modelManager.DownloadModelAsync(modelInfo, progress, status, _downloadCts.Token);
             _downloadStatusLabel.Text = "Download complete!";
             RefreshModelList();
         }
@@ -520,7 +647,7 @@ public class SettingsForm : Form
             return;
         }
 
-        var modelInfo = (ModelInfo)_availableModelsList.SelectedItems[0].Tag!;
+        var modelInfo = (ModelDescriptor)_availableModelsList.SelectedItems[0].Tag!;
         if (!modelInfo.IsDownloaded)
         {
             MessageBox.Show("This model is not downloaded.", "WhisperKey",
@@ -534,7 +661,7 @@ public class SettingsForm : Form
 
         if (result == DialogResult.Yes)
         {
-            _modelManager.DeleteModel(modelInfo.FileName);
+            _modelManager.DeleteModel(modelInfo);
             RefreshModelList();
         }
     }
@@ -558,6 +685,7 @@ public class SettingsForm : Form
                 Alt = source.Hotkey.Alt,
                 Shift = source.Hotkey.Shift
             },
+            Engine = source.Engine,
             ModelFileName = source.ModelFileName,
             Mode = source.Mode,
             Language = source.Language,

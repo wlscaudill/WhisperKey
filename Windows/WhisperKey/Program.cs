@@ -36,7 +36,7 @@ static class Program
         var settings = SettingsManager.Load();
         Logger.Level = settings.LogLevel;
         WhisperRuntimeSetup.Configure(settings.ComputeBackend);
-        Logger.Log($"Settings loaded: model={settings.ModelFileName}, mode={settings.Mode}, hotkey={settings.Hotkey}");
+        Logger.Log($"Settings loaded: engine={settings.Engine}, model={settings.ModelFileName}, mode={settings.Mode}, hotkey={settings.Hotkey}");
 
         using var app = new TrayApplication(settings);
         Application.Run(app);
