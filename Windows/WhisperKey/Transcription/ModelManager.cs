@@ -2,34 +2,25 @@ using WhisperKeys.Settings;
 
 namespace WhisperKeys.Transcription;
 
-public class ModelInfo
-{
-    public required string FileName { get; init; }
-    public required string DisplayName { get; init; }
-    public required string Size { get; init; }
-    public required string Url { get; init; }
-    public bool IsDownloaded { get; set; }
-}
-
 public class ModelManager
 {
-    private static readonly string BaseUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
+    private static readonly string WhisperBaseUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
 
-    public static readonly ModelInfo[] AvailableModels =
+    public static readonly ModelDescriptor[] AvailableModels =
     [
-        // English-only models (faster, recommended for English)
-        new() { FileName = "ggml-tiny.en.bin",   DisplayName = "Tiny (English)",    Size = "~75 MB",  Url = BaseUrl + "ggml-tiny.en.bin" },
-        new() { FileName = "ggml-base.en.bin",   DisplayName = "Base (English)",    Size = "~150 MB", Url = BaseUrl + "ggml-base.en.bin" },
-        new() { FileName = "ggml-small.en.bin",  DisplayName = "Small (English)",   Size = "~500 MB", Url = BaseUrl + "ggml-small.en.bin" },
-        new() { FileName = "ggml-medium.en.bin", DisplayName = "Medium (English)",  Size = "~1.5 GB", Url = BaseUrl + "ggml-medium.en.bin" },
+        // English-only Whisper models (faster, recommended for English)
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-tiny.en.bin",         DisplayName = "Whisper Tiny (English)",         Size = "~75 MB",  Url = WhisperBaseUrl + "ggml-tiny.en.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-base.en.bin",         DisplayName = "Whisper Base (English)",         Size = "~150 MB", Url = WhisperBaseUrl + "ggml-base.en.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-small.en.bin",        DisplayName = "Whisper Small (English)",        Size = "~500 MB", Url = WhisperBaseUrl + "ggml-small.en.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-medium.en.bin",       DisplayName = "Whisper Medium (English)",       Size = "~1.5 GB", Url = WhisperBaseUrl + "ggml-medium.en.bin" },
 
-        // Multilingual models
-        new() { FileName = "ggml-tiny.bin",      DisplayName = "Tiny (Multi)",      Size = "~75 MB",  Url = BaseUrl + "ggml-tiny.bin" },
-        new() { FileName = "ggml-base.bin",      DisplayName = "Base (Multi)",      Size = "~150 MB", Url = BaseUrl + "ggml-base.bin" },
-        new() { FileName = "ggml-small.bin",     DisplayName = "Small (Multi)",     Size = "~500 MB", Url = BaseUrl + "ggml-small.bin" },
-        new() { FileName = "ggml-medium.bin",    DisplayName = "Medium (Multi)",    Size = "~1.5 GB", Url = BaseUrl + "ggml-medium.bin" },
-        new() { FileName = "ggml-large-v3.bin",  DisplayName = "Large v3 (Multi)",  Size = "~3.1 GB", Url = BaseUrl + "ggml-large-v3.bin" },
-        new() { FileName = "ggml-large-v3-turbo.bin", DisplayName = "Large v3 Turbo (Multi)", Size = "~1.6 GB", Url = BaseUrl + "ggml-large-v3-turbo.bin" },
+        // Multilingual Whisper models
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-tiny.bin",            DisplayName = "Whisper Tiny (Multi)",           Size = "~75 MB",  Url = WhisperBaseUrl + "ggml-tiny.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-base.bin",            DisplayName = "Whisper Base (Multi)",           Size = "~150 MB", Url = WhisperBaseUrl + "ggml-base.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-small.bin",           DisplayName = "Whisper Small (Multi)",          Size = "~500 MB", Url = WhisperBaseUrl + "ggml-small.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-medium.bin",          DisplayName = "Whisper Medium (Multi)",         Size = "~1.5 GB", Url = WhisperBaseUrl + "ggml-medium.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-large-v3.bin",        DisplayName = "Whisper Large v3 (Multi)",       Size = "~3.1 GB", Url = WhisperBaseUrl + "ggml-large-v3.bin" },
+        new() { Engine = TranscriptionEngine.Whisper, FileName = "ggml-large-v3-turbo.bin",  DisplayName = "Whisper Large v3 Turbo (Multi)", Size = "~1.6 GB", Url = WhisperBaseUrl + "ggml-large-v3-turbo.bin" },
     ];
 
     private readonly string _modelsDir;
@@ -50,13 +41,14 @@ public class ModelManager
         return File.Exists(path) && new FileInfo(path).Length > 0;
     }
 
-    public List<ModelInfo> GetModelsWithStatus()
+    public List<ModelDescriptor> GetModelsWithStatus()
     {
-        var models = new List<ModelInfo>();
+        var models = new List<ModelDescriptor>();
         foreach (var model in AvailableModels)
         {
-            models.Add(new ModelInfo
+            models.Add(new ModelDescriptor
             {
+                Engine = model.Engine,
                 FileName = model.FileName,
                 DisplayName = model.DisplayName,
                 Size = model.Size,

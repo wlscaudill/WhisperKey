@@ -1,8 +1,9 @@
 using Whisper.net;
+using WhisperKeys.Settings;
 
 namespace WhisperKeys.Transcription;
 
-public class WhisperTranscriber : IDisposable
+public class WhisperTranscriber : ITranscriber
 {
     private WhisperFactory? _factory;
     private WhisperProcessor? _processor;
@@ -14,16 +15,15 @@ public class WhisperTranscriber : IDisposable
 
     public event Action<string>? StatusChanged;
 
-    public async Task LoadModelAsync(string modelPath, string language = "en",
-        int threadCount = 0, bool greedyDecoding = false)
+    public async Task LoadAsync(string resourcePath, AppSettings settings)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         await _semaphore.WaitAsync();
         try
         {
-            if (!File.Exists(modelPath))
-                throw new FileNotFoundException($"Model not found: {modelPath}");
+            if (!File.Exists(resourcePath))
+                throw new FileNotFoundException($"Model not found: {resourcePath}");
 
             // Dispose previous model if loaded
             _processor?.Dispose();
@@ -32,17 +32,17 @@ public class WhisperTranscriber : IDisposable
             StatusChanged?.Invoke("Loading model...");
 
             var factoryOptions = new WhisperFactoryOptions { UseGpu = true };
-            _factory = WhisperFactory.FromPath(modelPath, factoryOptions);
+            _factory = WhisperFactory.FromPath(resourcePath, factoryOptions);
 
             WhisperRuntimeSetup.LogLoadedRuntime();
 
             var builder = _factory.CreateBuilder()
-                .WithLanguage(language);
+                .WithLanguage(settings.Language);
 
-            if (threadCount > 0)
-                builder.WithThreads(threadCount);
+            if (settings.ThreadCount > 0)
+                builder.WithThreads(settings.ThreadCount);
 
-            if (greedyDecoding)
+            if (settings.GreedyDecoding)
                 builder.WithGreedySamplingStrategy();
 
             _processor = builder.Build();
@@ -56,12 +56,12 @@ public class WhisperTranscriber : IDisposable
         }
     }
 
-    public async Task<string> TranscribeAsync(float[] audioData)
+    public async Task<string> TranscribeAsync(float[] audioPcm16kMono)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (!_isLoaded || _processor == null)
-            throw new InvalidOperationException("Model not loaded. Call LoadModelAsync first.");
+            throw new InvalidOperationException("Model not loaded. Call LoadAsync first.");
 
         await _semaphore.WaitAsync();
         try
@@ -70,7 +70,7 @@ public class WhisperTranscriber : IDisposable
 
             var segments = new List<string>();
 
-            await foreach (var segment in _processor.ProcessAsync(audioData))
+            await foreach (var segment in _processor.ProcessAsync(audioPcm16kMono))
             {
                 var text = segment.Text.Trim();
                 if (!string.IsNullOrWhiteSpace(text))

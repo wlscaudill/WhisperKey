@@ -1,8 +1,11 @@
+using WhisperKeys.Transcription;
+
 namespace WhisperKeys.Settings;
 
 public class AppSettings
 {
     public HotkeySettings Hotkey { get; set; } = new();
+    public TranscriptionEngine Engine { get; set; } = TranscriptionEngine.Whisper;
     public string ModelFileName { get; set; } = "ggml-base.en.bin";
     public RecordingMode Mode { get; set; } = RecordingMode.Toggle;
     public string Language { get; set; } = "en";

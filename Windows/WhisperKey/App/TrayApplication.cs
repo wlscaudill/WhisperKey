@@ -28,7 +28,7 @@ public class TrayApplication : Form
 
     private readonly HotkeyManager _hotkeyManager;
     private readonly AudioRecorder _audioRecorder;
-    private readonly WhisperTranscriber _transcriber;
+    private readonly ITranscriber _transcriber;
     private readonly TextInjector _textInjector;
     private readonly ModelManager _modelManager;
     private readonly UpdateChecker _updateChecker;
@@ -220,9 +220,8 @@ public class TrayApplication : Form
 
         try
         {
-            Logger.Log("Loading whisper model...");
-            await _transcriber.LoadModelAsync(modelPath, _settings.Language,
-                _settings.ThreadCount, _settings.GreedyDecoding);
+            Logger.Log($"Loading {_settings.Engine} model...");
+            await _transcriber.LoadAsync(modelPath, _settings);
             Logger.Log("Model loaded successfully");
             SetState(AppState.Idle);
             _trayIcon.ShowBalloonTip(2000, "WhisperKey",

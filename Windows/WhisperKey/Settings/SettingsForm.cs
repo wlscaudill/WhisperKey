@@ -465,7 +465,7 @@ public class SettingsForm : Form
             return;
         }
 
-        var modelInfo = (ModelInfo)_availableModelsList.SelectedItems[0].Tag!;
+        var modelInfo = (ModelDescriptor)_availableModelsList.SelectedItems[0].Tag!;
         if (modelInfo.IsDownloaded)
         {
             MessageBox.Show("This model is already downloaded.", "WhisperKey",
@@ -520,7 +520,7 @@ public class SettingsForm : Form
             return;
         }
 
-        var modelInfo = (ModelInfo)_availableModelsList.SelectedItems[0].Tag!;
+        var modelInfo = (ModelDescriptor)_availableModelsList.SelectedItems[0].Tag!;
         if (!modelInfo.IsDownloaded)
         {
             MessageBox.Show("This model is not downloaded.", "WhisperKey",
@@ -558,6 +558,7 @@ public class SettingsForm : Form
                 Alt = source.Hotkey.Alt,
                 Shift = source.Hotkey.Shift
             },
+            Engine = source.Engine,
             ModelFileName = source.ModelFileName,
             Mode = source.Mode,
             Language = source.Language,
