@@ -2,9 +2,21 @@
 
 ## Open Design Questions
 
-> **Re-ask the user before starting work on any of these sections — do not silently pick a default.** User explicitly deferred these on 2026-05-16. Full options below; keep the ASCII previews intact when re-asking.
+> Q1 and Q2 resolved 2026-05-17. Q3 still open.
 
-### Q1: QWERTY symbol layout expansion
+### Q1: QWERTY symbol layout expansion — **RESOLVED (2026-05-17)**
+
+Picked **two symbol pages (Gboard-style)**. `?123` toggles letters↔symbols; `=\<` (on row-3 left in symbols mode) toggles between page 1 and page 2.
+
+Implemented in `KeyboardProfiles.DEFAULT` / `DEVELOPER` / `WRITER` — see `app/src/main/java/com/whisperkey/ui/KeyboardProfile.kt`.
+
+### Q2: Keyboard layout profile scope — **RESOLVED (2026-05-17)**
+
+Picked **built-in presets only** with three profiles: `Default`, `Developer`, `Writer`. Selectable from a `ListPreference` in Settings. No editor UI; profiles are code-defined.
+
+### Q3 (still open): Default quantized model — see further down
+
+#### Q1 (original — for reference, resolved above)
 
 **Context:** The current `QwertyKeyboardView.symbolRows` is missing common symbols — backslash, forward slash, equals, angle brackets, square/curly brackets, pipe, tilde, caret, percent, backtick, tab. Need to decide *how* to add them.
 
@@ -73,8 +85,12 @@ a s d f g h j k l
 - [ ] **NPU (Qualcomm QNN / Hexagon)** — only if 8.1 + Vulkan don't yield enough. Requires a separate inference path and ONNX→QNN conversion. Big project.
 
 ### QWERTY Keyboard
-- [ ] **Expand QWERTY symbol layout** — current page is missing `\`, `/`, `=`, `<`, `>`, `[`, `]`, `{`, `}`, `|`, `~`, `^`, `%`, `` ` `` (and Tab). ⚠️ See Q1 for layout scheme.
-- [ ] **Keyboard layout profile system** — add a `keyboard_profile` preference and a settings dropdown. Each profile carries its own QWERTY rows + symbol pages (and optionally bottom-row composition). Profiles persist in SharedPreferences; selected profile drives what `QwertyKeyboardView` renders. ⚠️ See Q2 for scope.
+- [x] **Expand QWERTY symbol layout** — implemented as two pages (Gboard-style). All requested symbols now covered across page 2 of the Default profile and page 2 of Developer.
+- [x] **Keyboard layout profile system** — `keyboard_profile` ListPreference added; three built-in profiles (`Default`, `Developer`, `Writer`) in `KeyboardProfile.kt`. Profile is read at `QwertyKeyboardView` construction.
+
+**Follow-ups (not blocking):**
+- [ ] If a user changes the profile while the keyboard is currently visible, the change won't take effect until next show. Acceptable for now; consider registering an `OnSharedPreferenceChangeListener` if it's confusing in practice.
+- [ ] Tab key still has no home — skip unless it becomes a felt need.
 
 ### Existing items
 

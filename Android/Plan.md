@@ -372,46 +372,28 @@ Sequence: prototype Vulkan first on a test device and benchmark vs the post-8.1 
 
 **Note on `flash_attn`:** the param already defaults to `true` in `whisper_context_default_params()`, but is short-circuited by `src/whisper.cpp:1140` unless `use_gpu` is also true. Once a GPU backend is built in, flash attention activates automatically — no `jni.c` change needed beyond ensuring `cparams.use_gpu = true` and `cparams.flash_attn = true` (both true by default).
 
-### 8.3 QWERTY Symbol Layout Expansion
+### 8.3 QWERTY Symbol Layout Expansion — **DONE (2026-05-17)**
 
-**Problem:** `QwertyKeyboardView.symbolRows` is missing common symbols. Current symbol page has 26 keys across 3 rows. Missing at minimum:
+Resolved to two symbol pages (Gboard-style). Row-3 left slot reuses the shift position:
+- letters mode: `⇧` (shift)
+- symbol page 1: `=\<` (flip to page 2)
+- symbol page 2: `?123` (flip back to page 1)
 
-```
-\ / = | < > [ ] { } ~ ^ % `
-```
+Bottom-row toggle stays as `?123` ↔ `ABC` between letters and symbols.
 
-Plus a Tab key (which doesn't exist anywhere in the layout today).
+All requested missing symbols (`\ / = | < > [ ] { } ~ ^ % \``) now live somewhere in the Default profile pages. Tab not included; no good slot and not yet a felt need.
 
-**Open question (TODO.md Q1):** layout scheme — two symbol pages (Gboard-style), one expanded page, or two pages plus a dedicated coder row visible in QWERTY mode.
+### 8.4 Keyboard Layout Profile System — **DONE (2026-05-17)**
 
-Implementation depends on Q1, but in all cases:
-- Update `symbolRows` (or split into `symbolPage1Rows` / `symbolPage2Rows`)
-- If two-page: add a `=\<` toggle button in the row-3 leftmost slot (replaces shift slot in symbols mode, which is currently `INVISIBLE`)
-- Track current page in state alongside `isSymbols`, `isShifted`, `isCapsLock`
-- Update `updateKeys()` to read from the correct page
+Resolved as **built-in presets only**. Implemented:
 
-### 8.4 Keyboard Layout Profile System
-
-**Goal:** user can pick a named profile from settings (e.g. "Default", "Developer", "Writer") that defines their QWERTY rows and symbol pages. Useful for switching between general writing and coding without manually toggling layers.
-
-**Open question (TODO.md Q2):** scope — built-in presets only, presets + user-editable slots, or fully custom.
-
-Independent of which option wins:
-- New SharedPreferences key: `keyboard_profile` (string, default `"default"`)
-- New data class for a profile:
-  ```kotlin
-  data class KeyboardProfile(
-      val id: String,
-      val displayName: String,
-      val letterRows: List<List<String>>,
-      val symbolPage1Rows: List<List<String>>,
-      val symbolPage2Rows: List<List<String>>?,  // null if single-page
-      val bottomRowExtras: List<String>          // e.g. extra punctuation in bottom row
-  )
-  ```
-- `QwertyKeyboardView` reads the active profile at construction (and reacts to preference changes if the user switches while keyboard is visible)
-- Settings UI: ListPreference for profile selection; if Option B/C wins Q2, also a profile-editor activity
-- Default profile preserves current behavior so this is a non-breaking change
+- `KeyboardProfile` data class + `KeyboardProfiles` singleton with three presets:
+  - **Default** — Gboard-style symbol pages
+  - **Developer** — iOS-style coder grouping (brackets/escapes clustered on page 2 row 1)
+  - **Writer** — em-dash + smart quotes promoted to page 1 row 3
+- New `keyboard_profile` ListPreference (defaults to `"default"`) in `preferences.xml`
+- Matching `keyboard_profile_entries` / `_values` arrays in `strings.xml`
+- `QwertyKeyboardView` reads the active profile at construction via `PreferenceManager`. Changes take effect next time the keyboard view inflates (acceptable; could later be live via a pref-change listener).
 
 ### 8.5 Cross-References
 
