@@ -1,6 +1,82 @@
 # WhisperKey TODO
 
+## Open Design Questions
+
+> **Re-ask the user before starting work on any of these sections — do not silently pick a default.** User explicitly deferred these on 2026-05-16. Full options below; keep the ASCII previews intact when re-asking.
+
+### Q1: QWERTY symbol layout expansion
+
+**Context:** The current `QwertyKeyboardView.symbolRows` is missing common symbols — backslash, forward slash, equals, angle brackets, square/curly brackets, pipe, tilde, caret, percent, backtick, tab. Need to decide *how* to add them.
+
+| Option | Description |
+|--------|-------------|
+| **A. Two symbol pages (recommended)** | Standard Android approach: `?123` shows page 1 (most common), then a `=\<` key flips to page 2 (rarer). Matches Gboard muscle memory. |
+| **B. One expanded symbol page** | Cram more symbols onto the single existing page. Simpler but keys get tighter. |
+| **C. Two pages + dedicated coder row** | Two pages like A, plus a thin top row with `\ / = \|` always visible in QWERTY mode. |
+
+Preview A — Page 1 / Page 2:
+```
+Page 1 (?123):                    Page 2 (=\<):
+1 2 3 4 5 6 7 8 9 0               ~ ` | • √ π ÷ × ¶ ∆
+@ # $ _ & - + ( ) /               £ ¢ € ¥ ^ ° = { }
+=\< * " ' : ; ! ? ⌫               ?123 \ © ® ™ ‰ [ ] ! ? ⌫
+```
+
+Preview B — Single expanded page:
+```
+1 2 3 4 5 6 7 8 9 0
+@ # $ % & - + ( ) /
+* " ' : ; ! ? \ | =
+[ ] { } < > ~ ^ ` ⌫
+```
+
+Preview C — QWERTY with coder row:
+```
+\ / = | { } [ ] < >
+q w e r t y u i o p
+a s d f g h j k l
+⇧ z x c v b n m ⌫
+?123 🎤 , space . ⏎
+```
+
+### Q2: Keyboard layout profile scope
+
+**Context:** User wants named profiles selectable from a settings dropdown so they can swap layouts (e.g. coding vs. general writing).
+
+| Option | Description |
+|--------|-------------|
+| **A. Built-in presets only (recommended)** | Ship a few fixed profiles (`Default`, `Developer`, `Writer`) selectable from a dropdown. Each profile defines its QWERTY rows + symbol pages. No custom-editor UI needed. |
+| **B. Presets + user-editable slots** | Ship presets AND let the user customize key-by-key (like emoji hotkeys today). Much bigger settings UI. |
+| **C. Fully custom only** | No presets, user defines everything via an editor. Most work. |
+
+### Q3: Default quantized model for new installs
+
+**Context:** We're adding `q5_1` / `q4_0` quantized variants to `ModelManager`. Variants can be *added* without changing the default — but eventually we need to pick which one new installs select.
+
+| Option | Description |
+|--------|-------------|
+| **A. base.en q5_1 (recommended)** | ~60 MB, similar accuracy to current base.en f16 (148 MB), ~1.5–2× faster. Best balance for keyboard use. |
+| **B. tiny.en q5_1** | ~32 MB, fastest, slightly worse accuracy. Best speed but more transcription errors. |
+| **C. Keep current base.en f16** | No default change; quantized variants are added as optional downloads only. |
+
+---
+
 ## Upcoming Tasks
+
+### Performance — Free Wins (Phase 8.1)
+- [x] **Add quantized model variants to `ModelManager.MODELS`** — added `tiny_q5_1`, `base_q5_1`, `base_q4_0` with matching `strings.xml` entries. ⚠️ Q3 still open: do we change the *default*?
+- [x] **Verified whisper.cpp version + updated CMakeLists define** — submodule was already at v1.8.3 (not v1.7.4 as docs claimed). All source files in CMakeLists.txt confirmed present. Bumped `WHISPER_VERSION` define to `1.8.3`. Note: `flash_attn` requires GPU backend (see Phase 8.2), not a free win.
+- [x] **Fixed O(n²) `strcat` loop in `jni.c`** — replaced with running write pointer + `memcpy`.
+
+### Performance — Later (Phase 8.2, deferred)
+- [ ] **GPU backend evaluation** — prototype the `ggml-vulkan` backend on a test device, benchmark vs CPU. If primarily Snapdragon, also try `ggml-opencl`. See `PERF.md` "GPU Acceleration" section and Plan.md Phase 8.2 for trade-offs.
+- [ ] **NPU (Qualcomm QNN / Hexagon)** — only if 8.1 + Vulkan don't yield enough. Requires a separate inference path and ONNX→QNN conversion. Big project.
+
+### QWERTY Keyboard
+- [ ] **Expand QWERTY symbol layout** — current page is missing `\`, `/`, `=`, `<`, `>`, `[`, `]`, `{`, `}`, `|`, `~`, `^`, `%`, `` ` `` (and Tab). ⚠️ See Q1 for layout scheme.
+- [ ] **Keyboard layout profile system** — add a `keyboard_profile` preference and a settings dropdown. Each profile carries its own QWERTY rows + symbol pages (and optionally bottom-row composition). Profiles persist in SharedPreferences; selected profile drives what `QwertyKeyboardView` renders. ⚠️ See Q2 for scope.
+
+### Existing items
 
 - [x] Make emojis not overflow the edge to need scrolling, feel free to redesign the keyboard a little
 - [x] increase size of text for tap to start and listening and the like so you can see what is happening.

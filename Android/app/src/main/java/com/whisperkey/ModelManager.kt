@@ -51,6 +51,24 @@ class ModelManager(private val context: Context) {
                 sizeBytes = 487_601_967L,
                 sha256 = "db8a495a91d927739e50b3fc1ef8d61e"
             ),
+            "tiny_q5_1" to ModelInfo(
+                fileName = "ggml-tiny.en-q5_1.bin",
+                displayName = "Tiny English q5_1 (quantized)",
+                sizeBytes = 32_500_000L,
+                sha256 = ""
+            ),
+            "base_q5_1" to ModelInfo(
+                fileName = "ggml-base.en-q5_1.bin",
+                displayName = "Base English q5_1 (quantized)",
+                sizeBytes = 60_000_000L,
+                sha256 = ""
+            ),
+            "base_q4_0" to ModelInfo(
+                fileName = "ggml-base.en-q4_0.bin",
+                displayName = "Base English q4_0 (quantized)",
+                sizeBytes = 52_500_000L,
+                sha256 = ""
+            ),
             "tiny_multi" to ModelInfo(
                 fileName = "ggml-tiny.bin",
                 displayName = "Tiny (Multilingual)",
@@ -78,7 +96,7 @@ class ModelManager(private val context: Context) {
         )
 
         // Model keys that are English-only (used for language compatibility checks)
-        val ENGLISH_ONLY_MODELS = setOf("tiny", "base", "small")
+        val ENGLISH_ONLY_MODELS = setOf("tiny", "base", "small", "tiny_q5_1", "base_q5_1", "base_q4_0")
     }
 
     data class ModelInfo(

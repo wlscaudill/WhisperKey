@@ -340,6 +340,86 @@ User presses & holds mic → Start recording → User releases
 
 ---
 
+## Phase 8: Performance, QWERTY Expansion & Layout Profiles
+
+> Added 2026-05-16. Phases 1–7 describe the original bring-up; this phase covers ongoing performance and keyboard-customization work.
+
+### 8.1 Performance — Free Wins (no GPU)
+
+These changes don't require new backends or hardware-specific code. Expected combined speedup: ~2–3× on keyboard-length recordings.
+
+- [x] **Quantized model variants in `ModelManager`**
+  - Added `tiny_q5_1`, `base_q5_1`, `base_q4_0` to `MODELS` map and `strings.xml` arrays
+  - All three keys added to `ENGLISH_ONLY_MODELS` set
+  - **Default still `base` (f16)** — `Q3` (TODO.md) decides whether to flip the default to a quantized variant
+- [x] **Verify whisper.cpp version, update CMakeLists define**
+  - Submodule was found to already be at v1.8.3-74-gaa1bc0d1 (despite stale v1.7.4 references in docs)
+  - All source files in `CMakeLists.txt` confirmed present in v1.8.3 — no reconciliation needed
+  - Bumped `WHISPER_VERSION` define in CMakeLists.txt from `1.7.4` → `1.8.3`
+- [x] **Fix `strcat` loop in `jni.c`**
+  - Replaced O(n²) concatenation with running write pointer + `memcpy` (O(n))
+  - See `jni.c` segment-collection block in `nativeTranscribe`
+
+### 8.2 Performance — GPU & NPU (deferred)
+
+| Backend | Coverage | Expected gain | Effort |
+|---------|----------|---------------|--------|
+| **Vulkan** (`ggml-vulkan`) | Most modern Android GPUs (Adreno, Mali, Xclipse) | 1.3–2× — phone GPUs are memory-bandwidth-limited | Add Vulkan SDK headers, build the `ggml-vulkan` translation unit, multi-backend selection at runtime |
+| **OpenCL** (`ggml-opencl`) | Best on Snapdragon (Adreno); Mali support spotty | Often beats Vulkan on Adreno | Similar to Vulkan but vendor-flavored |
+| **Qualcomm QNN / Hexagon NPU** | Snapdragon 8 Gen 2/3+ only | 5–10× at low power | Largest — separate inference path, ONNX → QNN model conversion, parallel maintenance |
+
+Sequence: prototype Vulkan first on a test device and benchmark vs the post-8.1 CPU baseline. Only chase OpenCL or NPU if results don't satisfy.
+
+**Note on `flash_attn`:** the param already defaults to `true` in `whisper_context_default_params()`, but is short-circuited by `src/whisper.cpp:1140` unless `use_gpu` is also true. Once a GPU backend is built in, flash attention activates automatically — no `jni.c` change needed beyond ensuring `cparams.use_gpu = true` and `cparams.flash_attn = true` (both true by default).
+
+### 8.3 QWERTY Symbol Layout Expansion
+
+**Problem:** `QwertyKeyboardView.symbolRows` is missing common symbols. Current symbol page has 26 keys across 3 rows. Missing at minimum:
+
+```
+\ / = | < > [ ] { } ~ ^ % `
+```
+
+Plus a Tab key (which doesn't exist anywhere in the layout today).
+
+**Open question (TODO.md Q1):** layout scheme — two symbol pages (Gboard-style), one expanded page, or two pages plus a dedicated coder row visible in QWERTY mode.
+
+Implementation depends on Q1, but in all cases:
+- Update `symbolRows` (or split into `symbolPage1Rows` / `symbolPage2Rows`)
+- If two-page: add a `=\<` toggle button in the row-3 leftmost slot (replaces shift slot in symbols mode, which is currently `INVISIBLE`)
+- Track current page in state alongside `isSymbols`, `isShifted`, `isCapsLock`
+- Update `updateKeys()` to read from the correct page
+
+### 8.4 Keyboard Layout Profile System
+
+**Goal:** user can pick a named profile from settings (e.g. "Default", "Developer", "Writer") that defines their QWERTY rows and symbol pages. Useful for switching between general writing and coding without manually toggling layers.
+
+**Open question (TODO.md Q2):** scope — built-in presets only, presets + user-editable slots, or fully custom.
+
+Independent of which option wins:
+- New SharedPreferences key: `keyboard_profile` (string, default `"default"`)
+- New data class for a profile:
+  ```kotlin
+  data class KeyboardProfile(
+      val id: String,
+      val displayName: String,
+      val letterRows: List<List<String>>,
+      val symbolPage1Rows: List<List<String>>,
+      val symbolPage2Rows: List<List<String>>?,  // null if single-page
+      val bottomRowExtras: List<String>          // e.g. extra punctuation in bottom row
+  )
+  ```
+- `QwertyKeyboardView` reads the active profile at construction (and reacts to preference changes if the user switches while keyboard is visible)
+- Settings UI: ListPreference for profile selection; if Option B/C wins Q2, also a profile-editor activity
+- Default profile preserves current behavior so this is a non-breaking change
+
+### 8.5 Cross-References
+
+- `Android/PERF.md` — detailed analysis of CPU bottlenecks and future optimizations
+- `Android/TODO.md` — actionable task list and the three open design questions
+
+---
+
 ## Technical Decisions & Rationale
 
 ### Why whisper.cpp?

@@ -93,7 +93,7 @@ target_include_directories(whisper PRIVATE ${WHISPER_INCLUDE_DIRS})
 # Version definitions
 set(GGML_VERSION "0.9.5")
 set(GGML_COMMIT "unknown")
-set(WHISPER_VERSION "1.7.4")
+set(WHISPER_VERSION "1.8.3")
 
 # Compile definitions
 target_compile_definitions(whisper PRIVATE

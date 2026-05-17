@@ -11,7 +11,7 @@ AudioRecorder (capture) → WhisperEngine (Kotlin) → JNI → whisper.cpp → R
 | Priority | Issue | Location | Impact |
 |----------|-------|----------|--------|
 | **HIGH** | Thread count capped at 4 | WhisperEngine.kt:22 | Modern phones have 8+ cores |
-| **HIGH** | Missing whisper speed parameters | jni.c | Not using `flash_attn`, timestamps enabled |
+| **HIGH** | Missing whisper speed parameters | jni.c | Timestamps enabled (single_segment fixed); `flash_attn` requires GPU backend |
 | **MEDIUM** | O(n²) string concatenation | jni.c:130 | Uses `strcat()` in loop |
 | **LOW** | Synchronized buffer per read | AudioRecorder.kt:119 | Lock contention |
 
@@ -35,7 +35,7 @@ Allows modern 8-core phones to use all available cores. Automatically scales dow
 
 Changed `single_segment` from `false` to `true` - treats audio as single segment, faster for short keyboard recordings.
 
-Note: `flash_attn` parameter is not available in current whisper.cpp version (v1.7.4). Upgrading whisper.cpp could enable this optimization.
+Note: `flash_attn` is present in `whisper_context_params` (whisper.cpp v1.8.3) and defaults to `true`, but `src/whisper.cpp:1140` short-circuits it unless `use_gpu` is also true. Our build is CPU-only (`GGML_USE_CPU`, no Vulkan/OpenCL), so flash attention currently does nothing. It will become useful once a GPU backend is added — see Plan.md Phase 8.2.
 
 ## Potential Future Optimizations
 

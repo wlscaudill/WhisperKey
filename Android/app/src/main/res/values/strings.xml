@@ -26,6 +26,9 @@
         <item>Tiny English (75 MB) - Fastest</item>
         <item>Base English (142 MB) - Recommended</item>
         <item>Small English (466 MB) - Best English</item>
+        <item>Tiny English q5_1 (32 MB) - Quantized, faster</item>
+        <item>Base English q5_1 (60 MB) - Quantized, faster</item>
+        <item>Base English q4_0 (52 MB) - Quantized, smallest base</item>
         <item>Tiny Multilingual (75 MB)</item>
         <item>Base Multilingual (142 MB)</item>
         <item>Small Multilingual (466 MB)</item>
@@ -35,6 +38,9 @@
         <item>tiny</item>
         <item>base</item>
         <item>small</item>
+        <item>tiny_q5_1</item>
+        <item>base_q5_1</item>
+        <item>base_q4_0</item>
         <item>tiny_multi</item>
         <item>base_multi</item>
         <item>small_multi</item>

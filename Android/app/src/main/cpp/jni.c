@@ -120,20 +120,23 @@ Java_com_whisperkey_WhisperEngine_nativeTranscribe(
         }
     }
 
-    // Allocate buffer and concatenate segments
+    // Allocate buffer and concatenate segments via running write pointer (O(n))
     char *full_text = (char *) malloc(total_len + 1);
     if (full_text == NULL) {
         LOGE("Failed to allocate memory for transcription result");
         return (*env)->NewStringUTF(env, "");
     }
-    full_text[0] = '\0';
 
+    char *write_ptr = full_text;
     for (int i = 0; i < n_segments; i++) {
         const char *text = whisper_full_get_segment_text(context, i);
         if (text != NULL) {
-            strcat(full_text, text);
+            size_t len = strlen(text);
+            memcpy(write_ptr, text, len);
+            write_ptr += len;
         }
     }
+    *write_ptr = '\0';
 
     // Trim leading whitespace
     char *trimmed = full_text;
